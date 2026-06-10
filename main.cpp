@@ -1,0 +1,67 @@
+
+#include "coproto/Socket/AsioSocket.h"
+#include "coproto/Socket/Socket.h"
+#include "libOTe/config.h"
+#include "Coeff128.h"
+#include "libOTe/Triple/Foleage/fft/FoleageFft.h"
+#include "Walsh.h"
+#include <fstream>
+#include <ctime>
+#include <omp.h>
+#include "libOTe/Tools/CoeffCtx.h"
+#include <bitset>
+#include "Prime_test.h"
+#include "Prime_OLE.h"
+//#define trial 2
+//#define num_thread 1
+using namespace osuCrypto;
+
+void printUsage() {
+    printf("Usage: ./main [OPTIONS] n\n");
+    printf("Options:\n");
+    printf("  --QA_Syndrome\tTests syndrome encoding of QA code.\n");
+    printf("  --EA_Syndrome\tTests syndrome encoding of EA code.\n");
+    printf("  --EC_Syndrome\tTests syndrome encoding of EC code.\n");
+    printf("  --QA_VOLE\tTests VOLE based on QA code.\n");
+    printf("  --EA_VOLE\tTests VOLE based on EA code.\n");
+    printf("  --EC_VOLE\tTests VOLE based on EC code..\n");
+    printf("  --OLE\tTests OLE based on QA code.\n");
+}
+
+int main(int argc, char **argv)
+{
+    if (argc <3) {
+        printUsage();
+    }
+    else
+    {
+        u64 num_var=std::atoi(argv[2]);
+        u64 n=ipow(2, num_var);
+        if (strcmp(argv[1], "--QA_Syndrome") == 0) {
+            QA_prime_encode_test<u64, CoeffCtxIntegerPrime_64>(n);
+            QA_prime_encode_test<u32, CoeffCtxIntegerPrime_32>(n);
+        } else if (strcmp(argv[1], "--EA_Syndrome") == 0) {
+                EA_prime_encode_test<u64, CoeffCtxIntegerPrime_64>(n, 5, 21);
+                EA_prime_encode_test<u32, CoeffCtxIntegerPrime_32>(n, 5, 21);
+        } else if (strcmp(argv[1], "--EC_Syndrome")==0) {
+                EC_prime_encode_test<u64, CoeffCtxIntegerPrime_64>(n,2,7,24,true);
+                EC_prime_encode_test<u32, CoeffCtxIntegerPrime_32>(n,2,7,24,true);
+        } else if (strcmp(argv[1], "--QA_VOLE") == 0) {
+            VOLE_prime_QASD<u64, CoeffCtxIntegerPrime_64>(n);
+            VOLE_prime_QASD<u32, CoeffCtxIntegerPrime_32>(n);
+        } else if (strcmp(argv[1], "--EC_VOLE") == 0) {
+                Vole_prime_LPN<u64, u64, CoeffCtxIntegerPrime_64>(n, osuCrypto::MultType::ExConv7x24, false, false, false);
+                Vole_prime_LPN<u32, u32, CoeffCtxIntegerPrime_32>(n, osuCrypto::MultType::ExConv7x24, false, false, false);
+        } else if (strcmp(argv[1], "--EA_VOLE") ==0) {
+            Vole_prime_LPN<u64, u64, CoeffCtxIntegerPrime_64>(n, osuCrypto::MultType::ExAcc21, false, false, false);
+            Vole_prime_LPN<u32, u32, CoeffCtxIntegerPrime_32>(n, osuCrypto::MultType::ExAcc21, false, false, false);
+        } else if (strcmp(argv[1], "--OLE") ==0) {
+            Prime_OLE<u64, CoeffCtxIntegerPrime_64>(num_var, 6, 2);
+            Prime_OLE<u64, CoeffCtxIntegerPrime_64>(num_var, 5, 3);
+        }
+        else
+        {
+            printUsage();
+        }
+    }
+}
