@@ -91,3 +91,80 @@ After the local WHT-domain optimization, preset `3` completes in about 0.026 sec
 - verification, about 0.0011 seconds
 
 This benchmark is still only for the algebraic local harness. The next meaningful bottleneck will come from the real PPRF/silent setup once that path is integrated.
+
+## Phase 3E Scaling Grid
+
+The benchmark preset map was extended for the requested optimized local-algebra/WHT scaling runs:
+
+| Preset | `N` | `t` | `m` |
+| ---: | ---: | ---: | ---: |
+| 5 | 16384 | 32 | 8 |
+| 3 | 16384 | 32 | 16 |
+| 6 | 16384 | 32 | 32 |
+| 7 | 16384 | 32 | 64 |
+| 8 | 65536 | 64 | 8 |
+| 9 | 65536 | 64 | 16 |
+| 4 | 65536 | 64 | 32 |
+| 10 | 262144 | 64 | 8 |
+| 11 | 262144 | 64 | 16 |
+
+Commands:
+
+```bash
+./build/main --MODULE_MVOLE_BENCH 5
+./build/main --MODULE_MVOLE_BENCH 3
+./build/main --MODULE_MVOLE_BENCH 6
+./build/main --MODULE_MVOLE_BENCH 7
+./build/main --MODULE_MVOLE_BENCH 8
+./build/main --MODULE_MVOLE_BENCH 9
+./build/main --MODULE_MVOLE_BENCH 4
+./build/main --MODULE_MVOLE_BENCH 10
+./build/main --MODULE_MVOLE_BENCH 11
+```
+
+All requested grid points completed under the 60-second cap.
+
+| `N` | `t` | `m` | Output elems `m*N` | Gen s | Expand P0 s | Expand P1 s | Verify s | Total no verify s | Total with verify s | Throughput no verify elems/s | Result |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 16384 | 32 | 8 | 131072 | 0.007069 | 0.003673 | 0.003558 | 0.000575 | 0.014300 | 0.014874 | 9166062.815635 | PASS |
+| 16384 | 32 | 16 | 262144 | 0.011065 | 0.007141 | 0.006996 | 0.001149 | 0.025202 | 0.026352 | 10401622.454079 | PASS |
+| 16384 | 32 | 32 | 524288 | 0.019344 | 0.014077 | 0.013913 | 0.002288 | 0.047334 | 0.049623 | 11076257.653062 | PASS |
+| 16384 | 32 | 64 | 1048576 | 0.037429 | 0.027976 | 0.028138 | 0.004552 | 0.093543 | 0.098095 | 11209550.155634 | PASS |
+| 65536 | 64 | 8 | 524288 | 0.034613 | 0.015325 | 0.014843 | 0.002282 | 0.064780 | 0.067063 | 8093330.890952 | PASS |
+| 65536 | 64 | 16 | 1048576 | 0.051733 | 0.029698 | 0.029309 | 0.004559 | 0.110740 | 0.115298 | 9468826.196494 | PASS |
+| 65536 | 64 | 32 | 2097152 | 0.088302 | 0.059376 | 0.058649 | 0.009126 | 0.206327 | 0.215452 | 10164233.102028 | PASS |
+| 262144 | 64 | 8 | 2097152 | 0.140775 | 0.075154 | 0.072352 | 0.009158 | 0.288281 | 0.297440 | 7274673.773547 | PASS |
+| 262144 | 64 | 16 | 4194304 | 0.209202 | 0.145164 | 0.142434 | 0.018240 | 0.496800 | 0.515040 | 8442639.353315 | PASS |
+
+The optimized local layer sustains roughly 7.3M to 11.2M output field elements per second without verification over this grid. Gen and row expansion scale approximately linearly in `m*N`; verification remains a small fraction of total time.
+
+## Original QA-SD VOLE Comparison
+
+Closest available original benchmark/test entry point:
+
+```bash
+./build/main --QA_VOLE n
+```
+
+This passes `N = 2^n` to `VOLE_prime_QASD` and runs both field contexts, Fp64 first and Fp32 second.
+
+Observed output:
+
+```text
+COMMAND ./build/main --QA_VOLE 14
+The total time of VOLE based on QA-SD code consume 0.0162073 seconds
+The total time of VOLE based on QA-SD code consume 0.0149026 seconds
+COMMAND ./build/main --QA_VOLE 16
+The total time of VOLE based on QA-SD code consume 0.0235897 seconds
+The total time of VOLE based on QA-SD code consume 0.0194725 seconds
+COMMAND ./build/main --QA_VOLE 18
+The total time of VOLE based on QA-SD code consume 0.0575277 seconds
+The total time of VOLE based on QA-SD code consume 0.0428349 seconds
+```
+
+Comparison notes:
+
+- `QA_VOLE` is the original scalar QA-SD VOLE wrapper for vectors of length `N`.
+- `MODULE_MVOLE_BENCH` measures only the optimized local algebra/WHT layer for matrix-shaped output of size `m*N`.
+- The current ModuleMVOLE benchmark does not include PPRF/silent setup, communication, or malicious checks.
+- Therefore the comparison is closest by `N`, but not exact by functionality or output size. The meaningful Phase 3E takeaway is that the local ModuleMVOLE algebra/WHT layer is no longer the bottleneck at these tested sizes.
