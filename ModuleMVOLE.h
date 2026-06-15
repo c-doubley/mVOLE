@@ -4,7 +4,9 @@
 #include "Walsh.h"
 #include "cryptoTools/Common/Matrix.h"
 #include "cryptoTools/Crypto/PRNG.h"
+#include <iomanip>
 #include <iostream>
+#include <omp.h>
 #include <string>
 #include <vector>
 
@@ -328,6 +330,82 @@ namespace osuCrypto
         return ok;
     }
 
+    struct ModuleMVOLEBenchResult
+    {
+        double genSeconds = 0;
+        double expandP0Seconds = 0;
+        double expandP1Seconds = 0;
+        double verifySeconds = 0;
+        bool ok = false;
+    };
+
+    inline double moduleMvoleTotalSeconds(const ModuleMVOLEBenchResult& result)
+    {
+        return result.genSeconds
+            + result.expandP0Seconds
+            + result.expandP1Seconds
+            + result.verifySeconds;
+    }
+
+    template<typename F, typename Ctx>
+    ModuleMVOLEBenchResult moduleMvoleBenchmarkOnce(
+        const ModuleMVOLEParams& params,
+        Ctx ctx = {})
+    {
+        PRNG prng(sysRandomSeed());
+        ModuleMVOLEGenState<F, Ctx> gen;
+        ModuleMVOLEResult<F, Ctx> result;
+        ModuleMVOLEBenchResult timings;
+
+        auto start = omp_get_wtime();
+        moduleMvoleGenDirect<F, Ctx>(gen, params, prng, ctx);
+        auto end = omp_get_wtime();
+        timings.genSeconds = end - start;
+
+        start = omp_get_wtime();
+        moduleMvoleExpandP0<F, Ctx>(result.p0, params, gen, ctx);
+        end = omp_get_wtime();
+        timings.expandP0Seconds = end - start;
+
+        start = omp_get_wtime();
+        moduleMvoleExpandP1<F, Ctx>(result.p1, params, gen, ctx);
+        end = omp_get_wtime();
+        timings.expandP1Seconds = end - start;
+
+        start = omp_get_wtime();
+        timings.ok = moduleMvoleVerify<F, Ctx>(result, params, ctx, &std::cout);
+        end = omp_get_wtime();
+        timings.verifySeconds = end - start;
+
+        return timings;
+    }
+
+    template<typename F, typename Ctx>
+    bool runModuleMvoleBenchmark(const ModuleMVOLEParams& params, const std::string& label)
+    {
+        auto timings = moduleMvoleBenchmarkOnce<F, Ctx>(params);
+        auto total = moduleMvoleTotalSeconds(timings);
+        auto outputElems = params.m * params.N;
+        auto throughput = total > 0 ? static_cast<double>(outputElems) / total : 0.0;
+
+        std::cout << std::fixed << std::setprecision(6)
+                  << "MODULE_MVOLE_BENCH " << label
+                  << " N=" << params.N
+                  << " t=" << params.t
+                  << " m=" << params.m
+                  << " output_elems=" << outputElems
+                  << " gen_s=" << timings.genSeconds
+                  << " expand_p0_s=" << timings.expandP0Seconds
+                  << " expand_p1_s=" << timings.expandP1Seconds
+                  << " verify_s=" << timings.verifySeconds
+                  << " total_s=" << total
+                  << " throughput_elems_per_s=" << throughput
+                  << " " << (timings.ok ? "PASS" : "FAIL")
+                  << std::endl;
+
+        return timings.ok;
+    }
+
     inline ModuleMVOLEParams moduleMvolePreset(u64 presetOrNumVar)
     {
         ModuleMVOLEParams params;
@@ -361,11 +439,57 @@ namespace osuCrypto
         return params;
     }
 
+    inline ModuleMVOLEParams moduleMvoleBenchPreset(u64 preset)
+    {
+        ModuleMVOLEParams params;
+
+        if (preset == 1)
+        {
+            params.n = 10;
+            params.t = 8;
+            params.m = 8;
+        }
+        else if (preset == 2)
+        {
+            params.n = 12;
+            params.t = 16;
+            params.m = 16;
+        }
+        else if (preset == 3)
+        {
+            params.n = 14;
+            params.t = 32;
+            params.m = 16;
+        }
+        else if (preset == 4)
+        {
+            params.n = 16;
+            params.t = 64;
+            params.m = 32;
+        }
+        else
+        {
+            params.n = preset;
+            params.t = params.n <= 10 ? 8 : 16;
+            params.m = params.n <= 10 ? 8 : 16;
+        }
+
+        params.N = 1ull << params.n;
+        return params;
+    }
+
     inline int ModuleMVOLE_Test(u64 presetOrNumVar)
     {
         auto params = moduleMvolePreset(presetOrNumVar);
         auto ok64 = runModuleMvoleCorrectness<u64, CoeffCtxIntegerPrime_64>(params, "Fp64");
         auto ok32 = runModuleMvoleCorrectness<u32, CoeffCtxIntegerPrime_32>(params, "Fp32");
         return (ok64 && ok32) ? 0 : 1;
+    }
+
+    inline int ModuleMVOLE_Bench(u64 preset)
+    {
+        auto params = moduleMvoleBenchPreset(preset);
+        auto ok64 = runModuleMvoleBenchmark<u64, CoeffCtxIntegerPrime_64>(params, "Fp64");
+        return ok64 ? 0 : 1;
     }
 }
