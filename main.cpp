@@ -13,6 +13,7 @@
 #include "Prime_test.h"
 #include "Prime_OLE.h"
 #include "ModuleMVOLE.h"
+#include "ModulePprfTest.h"
 //#define trial 2
 //#define num_thread 1
 using namespace osuCrypto;
@@ -29,6 +30,7 @@ void printUsage() {
     printf("  --OLE\tTests OLE based on QA code.\n");
     printf("  --MODULE_MVOLE\tTests module-valued Matrix-VOLE prototype.\n");
     printf("  --MODULE_MVOLE_BENCH\tBenchmarks module-valued Matrix-VOLE prototype.\n");
+    printf("  --MODULE_PPRF_TEST\tTests vector-valued ModuleMVOLE PPRF adapter.\n");
 }
 
 int main(int argc, char **argv)
@@ -65,6 +67,8 @@ int main(int argc, char **argv)
             return ModuleMVOLE_Test(num_var);
         } else if (strcmp(argv[1], "--MODULE_MVOLE_BENCH") ==0) {
             return ModuleMVOLE_Bench(num_var);
+        } else if (strcmp(argv[1], "--MODULE_PPRF_TEST") ==0) {
+            return ModulePprf_Test(num_var);
         }
         else
         {
