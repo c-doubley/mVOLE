@@ -12,6 +12,7 @@
 #include <bitset>
 #include "Prime_test.h"
 #include "Prime_OLE.h"
+#include "ModuleMVOLE.h"
 //#define trial 2
 //#define num_thread 1
 using namespace osuCrypto;
@@ -26,6 +27,7 @@ void printUsage() {
     printf("  --EA_VOLE\tTests VOLE based on EA code.\n");
     printf("  --EC_VOLE\tTests VOLE based on EC code..\n");
     printf("  --OLE\tTests OLE based on QA code.\n");
+    printf("  --MODULE_MVOLE\tTests module-valued Matrix-VOLE prototype.\n");
 }
 
 int main(int argc, char **argv)
@@ -58,6 +60,8 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[1], "--OLE") ==0) {
             Prime_OLE<u64, CoeffCtxIntegerPrime_64>(num_var, 6, 2);
             Prime_OLE<u64, CoeffCtxIntegerPrime_64>(num_var, 5, 3);
+        } else if (strcmp(argv[1], "--MODULE_MVOLE") ==0) {
+            return ModuleMVOLE_Test(num_var);
         }
         else
         {
