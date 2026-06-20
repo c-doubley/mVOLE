@@ -165,6 +165,6 @@ The total time of VOLE based on QA-SD code consume 0.0428349 seconds
 Comparison notes:
 
 - `QA_VOLE` is the original scalar QA-SD VOLE wrapper for vectors of length `N`.
-- `MODULE_MVOLE_BENCH` measures only the optimized local algebra/WHT layer for matrix-shaped output of size `m*N`.
+- `MODULE_MVOLE_BENCH` measures only the optimized local algebra/WHT layer for the `F_p^{m x N}` coordinate image of the extension-field ring output.
 - The current ModuleMVOLE benchmark does not include PPRF/silent setup, communication, or malicious checks.
 - Therefore the comparison is closest by `N`, but not exact by functionality or output size. The meaningful Phase 3E takeaway is that the local ModuleMVOLE algebra/WHT layer is no longer the bottleneck at these tested sizes.

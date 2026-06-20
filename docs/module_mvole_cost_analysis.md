@@ -2,9 +2,9 @@
 
 ## Question
 
-Can ModuleMVOLE be faster than running `m` independent QA-SD VOLE instances?
+Can the extension-field scalar ring-sVOLE view of ModuleMVOLE be faster than running `m` independent QA-SD VOLE instances?
 
-Short answer: yes, but only for the right functionality and only after the PPRF layer is made vector-valued. The current optimized algebra/WHT layer is already fast enough that it is unlikely to be the bottleneck. The remaining question is whether the PPRF/silent setup can avoid repeating the scalar QA-SD path `m` times.
+Short answer: yes, but only for the right functionality and only after the PPRF layer is made vector-valued. The corrected functionality is scalar ring-sVOLE over an extension field: `P0` has `x in R_p` and `Z0 in R_{p^m}`, `P1` has `Delta in F_{p^m}` and `Z1 in R_{p^m}`, and `Z0 + Z1 = Delta * x`. The current optimized coordinate algebra/WHT layer is already fast enough that it is unlikely to be the bottleneck. The remaining question is whether the PPRF/silent setup can avoid repeating the scalar QA-SD path `m` times.
 
 ## Structural Difference
 
@@ -18,15 +18,21 @@ for h in [0,m):  z_h = Delta_h * x_h + share_h
 
 Each row has its own right vector `x_h`.
 
-ModuleMVOLE produces a rank-1 matrix-style correlation:
+ModuleMVOLE is better interpreted as an extension-field scalar ring-sVOLE:
 
 ```text
-P0: x in F_p^N, Z0 in F_p^{m x N}
-P1: Delta in F_p^m, Z1 in F_p^{m x N}
-Z0 + Z1 = Delta * x^T
+P0: x in R_p, Z0 in R_{p^m}
+P1: Delta in F_{p^m}, Z1 in R_{p^m}
+Z0 + Z1 = Delta * x
 ```
 
-There is one shared right vector `x` and `m` left coefficients `Delta_h`. Therefore the comparison is about cost per `mN` field correlations when the application naturally wants shared-right-vector Matrix-VOLE, not about replacing arbitrary independent VOLE rows.
+After choosing an `F_p`-basis of `F_{p^m}` and applying the WHT/evaluation map for the ring, this becomes the matrix-shaped coordinate relation that the current code tests:
+
+```text
+Psi(phi(Z0 + Z1)) = psi(Delta) * phi(x)^T.
+```
+
+There is one shared base-ring element `x` and one extension-field scalar `Delta`, represented by `m` base-field coordinates. Therefore the comparison is about cost per `mN` base-field coordinate correlations when the application naturally wants this extension-field scalar ring relation, not about replacing arbitrary independent VOLE rows.
 
 ## Measured Inputs
 
@@ -92,9 +98,9 @@ L = log2(D)
 | Model | PPRF setup/path | PPRF full evaluation | WHT | Field ops | Communication/key-size intuition |
 | --- | --- | --- | --- | --- | --- |
 | A. `m` independent QA-SD VOLEs | Repeats scalar QA-SD setup `m` times. Roughly `O(m t L)` path/base material, with constants from two silent VOLE calls for `s` and `e`. | Roughly `O(m N)` scalar PPRF leaf expansion. | Roughly `O(m N log N)` across independent scalar rows. | Roughly `O(mN)` wrapper arithmetic. | Repeats scalar PPRF correction/key material `m` times. Communication scales like `m` scalar protocols. |
-| B. ModuleMVOLE algebra/WHT only | None. | None. | `O(m N log N)` row WHT plus one shared-vector WHT component. | `O(mN)` row multiplications/additions after WHT-domain optimization. | No protocol communication measured. Local-only layer. |
-| C. ModuleMVOLE + current independent scalar PPRF adapter | Still roughly `O(m t L)` because it runs `m` scalar PPRFs. | Roughly `O(m N)` scalar leaf expansion. | Same as Model B. | Same as Model B plus PPRF correction arithmetic. | Better algebra reuse than `m` full QA-SD wrappers, but PPRF correction/key material still scales with `m`. This is an upper-bound baseline for the adapter design. |
-| D. Ideal ModuleMVOLE + shared-path vector PPRF | Target is `O(t L)` shared tree/path work plus vector correction payloads. | `O(m N)` leaf material is still needed to output `mN` field elements. | Same as Model B. | Same as Model B plus vector PPRF correction arithmetic. | Path/base material paid once per sparse point. Correction payload scales with `m`, but tree traversal and base/path keys are shared. |
+| B. Extension-field ring-sVOLE algebra/WHT only | None. | None. | `O(m N log N)` coordinate-row WHT plus one shared base-ring WHT component. | `O(mN)` coordinate multiplications/additions after WHT-domain optimization. | No protocol communication measured. Local-only coordinate layer. |
+| C. Ring-sVOLE + current independent scalar PPRF adapter | Still roughly `O(m t L)` because it runs `m` scalar PPRFs. | Roughly `O(m N)` scalar leaf expansion. | Same as Model B. | Same as Model B plus PPRF correction arithmetic. | Better algebra reuse than `m` full QA-SD wrappers, but PPRF correction/key material still scales with `m`. This is an upper-bound baseline for the adapter design. |
+| D. Ideal ring-sVOLE + shared-path vector PPRF | Target is `O(t L)` shared tree/path work plus vector correction payloads. | `O(m N)` leaf material is still needed to output `mN` field coordinates. | Same as Model B. | Same as Model B plus vector PPRF correction arithmetic. | Path/base material paid once per sparse point. Correction payload scales with `m`, but tree traversal and base/path keys are shared. |
 
 ## Conservative Time Estimates
 
@@ -126,7 +132,7 @@ This is an extrapolation from an isolated local PPRF test with synthetic local b
 | 262144 | 8 | 2097152 | 0.460222 | 0.288281 | 0.337389 |
 | 262144 | 16 | 4194304 | 0.920443 | 0.496800 | 0.595016 |
 
-These estimates suggest that even with independent scalar PPRFs, ModuleMVOLE may be competitive when the target output is the shared-right-vector rank-1 matrix correlation. The margin shrinks as `N` grows because the measured algebra/WHT layer becomes a larger part of the total, but it remains below the naive `m * QA_VOLE` estimate in the measured grid.
+These estimates suggest that even with independent scalar PPRFs, the extension-field ring-sVOLE construction may be competitive when the target output is `Z0 + Z1 = Delta * x` and the consumer uses its `F_p` coordinate image. The margin shrinks as `N` grows because the measured algebra/WHT layer becomes a larger part of the total, but it remains below the naive `m * QA_VOLE` estimate in the measured grid.
 
 The table should not be read as a final performance claim. Model C does not include full silent setup, base OT/noisy VOLE costs, or real integration overhead. The correct next comparison is an integrated prototype with the same setup assumptions on both sides.
 
@@ -168,11 +174,11 @@ The output itself is still `mN` field elements, so leaf/output bandwidth cannot 
 
 ## Conservative Conclusions
 
-1. ModuleMVOLE is not a drop-in replacement for `m` arbitrary independent QA-SD VOLEs. It is attractive when the application wants `Z = Delta * x^T` with a shared right vector.
+1. ModuleMVOLE is not a drop-in replacement for `m` arbitrary independent QA-SD VOLEs. It is attractive when the application wants extension-field scalar ring-sVOLE, `Z0 + Z1 = Delta * x`, with `x in R_p` and `Delta in F_{p^m}`.
 2. The optimized local algebra/WHT layer is fast enough that it is no longer the main obstacle.
 3. The current independent-scalar-PPRF adapter is useful as an upper-bound baseline and correctness test, but it does not expose the intended asymptotic advantage.
 4. A shared-path vector-valued PPRF is the key implementation step for a meaningful paper-quality performance story.
-5. If the shared-path PPRF can pay path/setup cost once and only scale leaf payloads with `m`, ModuleMVOLE should beat `m` independent QA-SD VOLEs for shared-right-vector Matrix-VOLE workloads.
+5. If the shared-path PPRF can pay path/setup cost once and only scale leaf payloads with `m`, ModuleMVOLE should beat `m` independent QA-SD VOLEs for workloads that naturally consume this extension-field scalar ring-sVOLE relation or its mapped matrix-coordinate form.
 
 ## Recommended Next Implementation Step
 

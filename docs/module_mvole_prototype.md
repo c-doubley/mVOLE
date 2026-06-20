@@ -52,7 +52,7 @@ The Phase 3B refactor keeps the same direct algebra but separates the harness in
 | Helper | Role |
 | --- | --- |
 | `moduleMvoleGenBase` | Samples local `rho`, sparse `s`, sparse `e`, and computes `b = rho * s + e` in the XOR-convolution ring. |
-| `moduleMvoleGenDelta` | Samples the receiver-side vector `Delta in F_p^m`. |
+| `moduleMvoleGenDelta` | Samples the `F_p^m` coordinate representation `psi(Delta)` of an extension-field scalar `Delta in F_{p^m}`. |
 | `moduleMvoleGenRowMasks` | Creates direct random row masks for the algebraic shares of `Delta * s` and `Delta * e`. |
 | `moduleMvoleGenDirect` | Combines the local Gen steps for this correctness harness. |
 | `moduleMvoleExpandP0` | Expands P0 output `x` and `Z0`. |
@@ -61,13 +61,27 @@ The Phase 3B refactor keeps the same direct algebra but separates the harness in
 
 ## Correctness relation verified
 
-The verifier checks every row `h` and column `j` of the matrix output:
+The intended functionality is now best read as extension-field scalar ring-sVOLE:
+
+```text
+P0: x in R_p and Z0 in R_{p^m}
+P1: Delta in F_{p^m} and Z1 in R_{p^m}
+Z0 + Z1 = Delta * x
+```
+
+The implementation represents `F_{p^m}` as `m` coordinates over `F_p`. Let `phi : R_p -> F_p^N` be the WHT/evaluation map for the base ring, `psi : F_{p^m} -> F_p^m` be the extension-field coordinate map, and `Psi : R_{p^m} -> F_p^{m x N}` be the extension-ring coordinate/evaluation map. The current verifier checks the mapped Matrix-VOLE relation:
+
+```text
+Psi(phi(Z0 + Z1)) = psi(Delta) * phi(x)^T
+```
+
+Concretely, it checks every extension coordinate `h` and ring coordinate `j`:
 
 ```text
 Z0[h][j] + Z1[h][j] == Delta[h] * x[j]
 ```
 
-Here P0 outputs `x in F_p^N` and `Z0 in F_p^{m x N}`, while P1 outputs `Delta in F_p^m` and `Z1 in F_p^{m x N}`.
+Here `x[j]` is a base-field coordinate, so multiplying the extension-field scalar `Delta` by `x[j]` is coordinate-wise scaling of `psi(Delta)`. This is why the prototype can test the mapped relation without implementing general `F_{p^m}` multiplication.
 
 ## Prototype simplifications
 
@@ -75,7 +89,7 @@ This prototype is an algebraic correctness harness. It uses the existing prime-f
 
 Main simplifications:
 
-- `Delta` is represented as `m` independent ordinary `F_p` elements, not as an element of `F_{p^m}`.
+- `Delta` is represented by its `m` ordinary `F_p` coordinates, i.e. `psi(Delta)`. The prototype does not implement general multiplication between two `F_{p^m}` elements.
 - The construction uses direct random masks for the row-wise shares of `Delta * s` and `Delta * e`.
 - Sparse `s` and `e` are sampled locally in the harness.
 - No malicious security is implemented.
