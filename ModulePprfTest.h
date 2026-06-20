@@ -130,6 +130,9 @@ namespace osuCrypto
     template<typename F, typename Ctx>
     bool modulePprfRunAdapter(const ModulePprfTestParams& params, const std::string& label)
     {
+        // Baseline adapter for the F_{p^m} coordinate view: run one scalar
+        // RegularPprf per F_p coordinate of psi(Delta). This is intentionally
+        // not the final shared-path vector-valued PPRF.
         auto scalar = modulePprfRunScalar<F, Ctx>(params, 0, true);
 
         ModulePprfTiming vectorTiming;

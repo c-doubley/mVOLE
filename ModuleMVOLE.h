@@ -23,14 +23,20 @@ namespace osuCrypto
     template<typename F, typename Ctx>
     struct ModuleMVOLEP0Output
     {
+        // x is the base-ring value in R_p after the WHT/evaluation map.
         typename Ctx::template Vec<F> x;
+
+        // Z0 represents an R_{p^m} share as m rows of N base-field coordinates.
         Matrix<F> Z0;
     };
 
     template<typename F, typename Ctx>
     struct ModuleMVOLEP1Output
     {
+        // Delta is an F_{p^m} scalar represented as m coordinates over F_p.
         typename Ctx::template Vec<F> Delta;
+
+        // Z1 represents an R_{p^m} share as m rows of N base-field coordinates.
         Matrix<F> Z1;
     };
 
@@ -64,6 +70,8 @@ namespace osuCrypto
     struct ModuleMVOLEGenState
     {
         ModuleMVOLEBaseState<F, Ctx> base;
+
+        // Coordinate representation psi(Delta) of Delta in F_{p^m}.
         typename Ctx::template Vec<F> Delta;
         std::vector<ModuleMVOLERowMask<F, Ctx>> rowMasks;
     };
@@ -183,6 +191,9 @@ namespace osuCrypto
         PRNG& prng,
         Ctx ctx = {})
     {
+        // Sample the coordinate vector psi(Delta). The prototype does not
+        // implement general F_{p^m} arithmetic; multiplication by x in R_p
+        // is coordinate-wise scaling by base-field ring coordinates.
         ctx.resize(Delta, params.m);
         for (u64 h = 0; h < params.m; ++h)
             ctx.fromBlock(Delta[h], prng.get());
@@ -330,6 +341,8 @@ namespace osuCrypto
         Ctx ctx = {},
         std::ostream* err = nullptr)
     {
+        // Verifies the coordinate image of Z0 + Z1 = Delta * x:
+        //   Psi(Z0 + Z1)[h,j] == psi(Delta)[h] * phi(x)[j].
         for (u64 h = 0; h < params.m; ++h)
         {
             for (u64 j = 0; j < params.N; ++j)
