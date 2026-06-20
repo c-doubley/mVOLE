@@ -15,3 +15,12 @@ core.*
 # Editor / OS noise
 .vscode/
 .DS_Store
+
+# Object files
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
