@@ -372,6 +372,66 @@ namespace osuCrypto
             params.t = 128;
             params.m = 32;
         }
+        else if (preset == 8)
+        {
+            params.n = 16;
+            params.t = 64;
+            params.m = 4;
+        }
+        else if (preset == 9)
+        {
+            params.n = 16;
+            params.t = 64;
+            params.m = 8;
+        }
+        else if (preset == 10)
+        {
+            params.n = 16;
+            params.t = 64;
+            params.m = 16;
+        }
+        else if (preset == 11)
+        {
+            params.n = 16;
+            params.t = 64;
+            params.m = 32;
+        }
+        else if (preset == 12)
+        {
+            params.n = 16;
+            params.t = 64;
+            params.m = 64;
+        }
+        else if (preset == 13)
+        {
+            params.n = 18;
+            params.t = 128;
+            params.m = 4;
+        }
+        else if (preset == 14)
+        {
+            params.n = 18;
+            params.t = 128;
+            params.m = 8;
+        }
+        else if (preset == 15)
+        {
+            params.n = 18;
+            params.t = 128;
+            params.m = 16;
+        }
+        else if (preset == 16)
+        {
+            params.n = 18;
+            params.t = 128;
+            params.m = 32;
+        }
+        else if (preset == 17)
+        {
+            params.n = 18;
+            params.t = 128;
+            params.m = 64;
+        }
         else
         {
             params.n = 10;

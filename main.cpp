@@ -16,6 +16,7 @@
 #include "ModulePprfTest.h"
 #include "ModuleVectorPprfTest.h"
 #include "ModuleMvolePprfIntegration.h"
+#include "ModuleMvoleCoordPprfIntegration.h"
 //#define trial 2
 //#define num_thread 1
 using namespace osuCrypto;
@@ -35,6 +36,7 @@ void printUsage() {
     printf("  --MODULE_PPRF_TEST\tTests vector-valued ModuleMVOLE PPRF adapter.\n");
     printf("  --MODULE_VECTOR_PPRF_TEST\tTests shared-path vector-valued PPRF prototype.\n");
     printf("  --MODULE_MVOLE_PPRF\tTests RM-VOLE setup using shared-path vector-valued PPRF prototype.\n");
+    printf("  --MODULE_MVOLE_COORD_PPRF\tBenchmarks RM-VOLE setup using coordinate-wise scalar PPRF prototype.\n");
 }
 
 int main(int argc, char **argv)
@@ -77,6 +79,8 @@ int main(int argc, char **argv)
             return ModuleVectorPprf_Test(num_var);
         } else if (strcmp(argv[1], "--MODULE_MVOLE_PPRF") ==0) {
             return ModuleMVOLE_Pprf(num_var);
+        } else if (strcmp(argv[1], "--MODULE_MVOLE_COORD_PPRF") ==0) {
+            return ModuleMVOLE_CoordPprf(num_var);
         }
         else
         {
