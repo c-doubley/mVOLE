@@ -24,3 +24,4 @@ core.*
 *.dylib
 *.dll
 *.exe
+.venv-plot/
