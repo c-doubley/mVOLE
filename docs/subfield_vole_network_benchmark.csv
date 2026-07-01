@@ -1,0 +1,17 @@
+method,network,N,log2N,m,field_type,security_bits,total_s,comm_bytes_sent_by_sender,comm_bytes_sent_by_receiver,total_comm_bytes,entries,entries_per_s,rank_one_per_s,ok,notes
+libOTe-NoisyVole,loopback-LAN,4096,12,8,"array<u8,m> over scalar u8",128,0.030982186,2200,2097224,2099424,32768,1057640.02579,32.2766121151,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,4096,12,16,"array<u8,m> over scalar u8",128,0.084964238,4376,8388680,8393056,65536,771336.288569,11.7696577235,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,4096,12,32,"array<u8,m> over scalar u8",128,0.21348631,8728,33554504,33563232,131072,613959.742899,4.68414110488,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,4096,12,64,"array<u8,m> over scalar u8",128,0.684807915,17432,134217800,134235232,262144,382799.313878,1.46026349593,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,16384,14,8,"array<u8,m> over scalar u8",128,0.092111754,2200,8388680,8390880,131072,1422967.14923,10.8563777865,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,16384,14,16,"array<u8,m> over scalar u8",128,0.282392946,4376,33554504,33558880,262144,928295.14233,3.54116494114,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,16384,14,32,"array<u8,m> over scalar u8",128,0.746509182,8728,134217800,134226528,524288,702319.559681,1.33956825195,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,16384,14,64,"array<u8,m> over scalar u8",128,0,0,0,0,1048576,0,0,0,unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes=536870912
+libOTe-NoisyVole,loopback-LAN,65536,16,8,"array<u8,m> over scalar u8",128,0.343536305,2200,33554504,33556704,524288,1526150.1983,2.9109004942,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,65536,16,16,"array<u8,m> over scalar u8",128,1.114247734,4376,134217800,134222176,1048576,941061.819561,0.897466487466,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,65536,16,32,"array<u8,m> over scalar u8",128,0,0,0,0,2097152,0,0,0,unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes=536870912
+libOTe-NoisyVole,loopback-LAN,65536,16,64,"array<u8,m> over scalar u8",128,0,0,0,0,4194304,0,0,0,unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes=2147483648
+libOTe-NoisyVole,loopback-LAN,262144,18,8,"array<u8,m> over scalar u8",128,1.332470098,2200,134217800,134220000,2097152,1573882.97354,0.750485884449,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-LAN,262144,18,16,"array<u8,m> over scalar u8",128,0,0,0,0,4194304,0,0,0,unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes=536870912
+libOTe-NoisyVole,loopback-LAN,262144,18,32,"array<u8,m> over scalar u8",128,0,0,0,0,8388608,0,0,0,unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes=2147483648
+libOTe-NoisyVole,loopback-LAN,262144,18,64,"array<u8,m> over scalar u8",128,0,0,0,0,16777216,0,0,0,unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes=8589934592
