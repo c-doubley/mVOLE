@@ -48,6 +48,10 @@ int main(int argc, char **argv)
     }
     else
     {
+        if (strcmp(argv[1], "--SUBFIELD_VOLE_NET_BENCH") ==0) {
+            return SubfieldVoleNetBench(argc, argv);
+        }
+
         u64 num_var=std::atoi(argv[2]);
         u64 n=ipow(2, num_var);
         if (strcmp(argv[1], "--QA_Syndrome") == 0) {
@@ -83,8 +87,6 @@ int main(int argc, char **argv)
             return ModuleMVOLE_Pprf(num_var);
         } else if (strcmp(argv[1], "--MODULE_MVOLE_COORD_PPRF") ==0) {
             return ModuleMVOLE_CoordPprf(num_var);
-        } else if (strcmp(argv[1], "--SUBFIELD_VOLE_NET_BENCH") ==0) {
-            return SubfieldVoleNetBench(num_var);
         }
         else
         {

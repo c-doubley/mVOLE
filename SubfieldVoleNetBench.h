@@ -4,6 +4,7 @@
 #include "libOTe/Tools/CoeffCtx.h"
 #include "libOTe/Vole/Noisy/NoisyVoleReceiver.h"
 #include "libOTe/Vole/Noisy/NoisyVoleSender.h"
+#include "coproto/Socket/AsioSocket.h"
 #include "coproto/Socket/LocalAsyncSock.h"
 #include "cryptoTools/Crypto/PRNG.h"
 #include <algorithm>
@@ -22,7 +23,7 @@ namespace osuCrypto
     struct SubfieldVoleNetBenchRow
     {
         std::string method = "libOTe-NoisyVole";
-        std::string network = "loopback-LAN";
+        std::string network = "loopback-inproc";
         u64 N = 0;
         u64 log2N = 0;
         u64 m = 0;
@@ -32,6 +33,29 @@ namespace osuCrypto
         u64 senderBytes = 0;
         u64 receiverBytes = 0;
         u64 totalBytes = 0;
+        u64 entries = 0;
+        double entriesPerSecond = 0;
+        double rankOnePerSecond = 0;
+        bool ok = false;
+        std::string notes;
+    };
+
+    struct SubfieldVoleTcpBenchRow
+    {
+        std::string method = "libOTe-NoisyVole";
+        std::string role;
+        std::string network;
+        std::string address;
+        u64 N = 0;
+        u64 log2N = 0;
+        u64 m = 0;
+        u64 reps = 0;
+        std::string fieldType = "array<u8,m> over scalar u8";
+        u64 securityBits = 128;
+        double medianTotalSeconds = 0;
+        u64 bytesSentByRole = 0;
+        u64 bytesReceivedByRole = 0;
+        u64 localSocketBytes = 0;
         u64 entries = 0;
         double entriesPerSecond = 0;
         double rankOnePerSecond = 0;
@@ -110,6 +134,49 @@ namespace osuCrypto
             << subfieldVoleCsvEscape(row.notes) << '\n';
     }
 
+    inline void subfieldVoleAppendTcpCsv(const SubfieldVoleTcpBenchRow& row)
+    {
+        const auto path = std::filesystem::path("docs/subfield_vole_tcp_loopback.csv");
+        auto needsHeader = !std::filesystem::exists(path) || std::filesystem::file_size(path) == 0;
+        std::ofstream out(path, std::ios::app);
+        if (!out)
+            throw std::runtime_error("failed to open docs/subfield_vole_tcp_loopback.csv");
+
+        if (needsHeader)
+        {
+            out << "method,role,network,address,N,log2N,m,reps,field_type,security_bits,"
+                << "median_total_s,bytes_sent_by_role,bytes_received_by_role,total_local_socket_bytes,"
+                << "entries,entries_per_s,rank_one_per_s,ok,notes\n";
+        }
+
+        out << subfieldVoleCsvEscape(row.method) << ','
+            << subfieldVoleCsvEscape(row.role) << ','
+            << subfieldVoleCsvEscape(row.network) << ','
+            << subfieldVoleCsvEscape(row.address) << ','
+            << row.N << ','
+            << row.log2N << ','
+            << row.m << ','
+            << row.reps << ','
+            << subfieldVoleCsvEscape(row.fieldType) << ','
+            << row.securityBits << ','
+            << std::setprecision(12) << row.medianTotalSeconds << ','
+            << row.bytesSentByRole << ','
+            << row.bytesReceivedByRole << ','
+            << row.localSocketBytes << ','
+            << row.entries << ','
+            << std::setprecision(12) << row.entriesPerSecond << ','
+            << std::setprecision(12) << row.rankOnePerSecond << ','
+            << (row.ok ? 1 : 0) << ','
+            << subfieldVoleCsvEscape(row.notes) << '\n';
+    }
+
+    inline std::string subfieldVoleTcpNetworkLabel(const std::string& host)
+    {
+        if (host == "127.0.0.1" || host == "localhost" || host == "0.0.0.0" || host == "::1")
+            return "tcp-loopback";
+        return "tcp-lan";
+    }
+
     inline void subfieldVoleWriteNotes()
     {
         std::ofstream out("docs/subfield_vole_network_experiment_notes.md");
@@ -117,14 +184,15 @@ namespace osuCrypto
             throw std::runtime_error("failed to open docs/subfield_vole_network_experiment_notes.md");
 
         out << "# Subfield VOLE Network Benchmark Notes\n\n"
-            << "This Phase 6B harness benchmarks libOTe generic noisy subfield VOLE as an external networked baseline. "
+            << "This Phase 6B/6C harness benchmarks libOTe generic noisy subfield VOLE as an external networked baseline. "
             << "It does not modify or measure RM-VOLE network runtime.\n\n"
             << "## Implementation\n\n"
             << "- Harness: `SubfieldVoleNetBench.h`\n"
             << "- CLI: `./build/main --SUBFIELD_VOLE_NET_BENCH <log2N>`\n"
             << "- libOTe classes: `NoisyVoleSender<F,G,Ctx>` and `NoisyVoleReceiver<F,G,Ctx>`\n"
             << "- Base OT path: libOTe `DefaultBaseOT`\n"
-            << "- Socket path: `coproto::LocalAsyncSocket::makePair()`\n"
+            << "- In-process socket path: `coproto::LocalAsyncSocket::makePair()`\n"
+            << "- TCP socket path: `coproto::asioConnect(address, server)`\n"
             << "- Field instantiation: `F = std::array<u8, m>`, `G = u8`, `Ctx = CoeffCtxArray<u8, m>`\n\n"
             << "## Relation\n\n"
             << "libOTe noisy VOLE outputs receiver values `(a,c)` and sender values `(b,Delta)` such that:\n\n"
@@ -140,13 +208,32 @@ namespace osuCrypto
             << "```\n\n"
             << "The harness verifies this relation after every trial.\n\n"
             << "## Network And Bytes\n\n"
-            << "The benchmark is single-process loopback-LAN: both roles run in one process over real asynchronous "
+            << "The default numeric benchmark is single-process `loopback-inproc`: both roles run in one process over real asynchronous "
             << "`coproto` sockets. Communication is measured from socket counters, not estimated: "
             << "`Socket::bytesSent()` on the sender and receiver endpoints after the protocol finishes. "
             << "The measurement includes the libOTe `DefaultBaseOT` messages used by the noisy VOLE call and "
             << "the noisy VOLE payload on the same socket abstraction.\n\n"
-            << "The code is structured with separate sender and receiver role calls around one socket pair, so a later "
-            << "Phase 6C split can replace `LocalAsyncSocket::makePair()` with `asioConnect()` listen/connect roles.\n\n"
+            << "This mode is useful for deterministic regression and relation checking, but it is not a two-process TCP measurement.\n\n"
+            << "## Two-Process TCP Mode\n\n"
+            << "Phase 6C adds two-process TCP mode using `coproto::asioConnect(address, server)`. The sender is the "
+            << "server/listener and the receiver is the client/connector. Example loopback commands:\n\n"
+            << "```bash\n"
+            << "./build/main --SUBFIELD_VOLE_NET_BENCH server 0.0.0.0 12120 14 16 3\n"
+            << "./build/main --SUBFIELD_VOLE_NET_BENCH client 127.0.0.1 12120 14 16 3\n"
+            << "```\n\n"
+            << "For two machines, run the server with a bind address/port reachable from the client and replace "
+            << "`127.0.0.1` in the client command with the server machine's LAN IP. TCP rows are written to "
+            << "`docs/subfield_vole_tcp_loopback.csv`. Each process writes its own row because each process only "
+            << "knows its local socket counters. For a matching sender/client run, total wire bytes are the sum of "
+            << "`bytes_sent_by_role` over the two rows. The local `bytes_sent + bytes_received` value is also printed "
+            << "for debugging but should not be summed across both roles without noting the double count.\n\n"
+            << "Phase 6C loopback commands tested on one host:\n\n"
+            << "```bash\n"
+            << "./build/main --SUBFIELD_VOLE_NET_BENCH server 0.0.0.0 12120 12 8 3\n"
+            << "./build/main --SUBFIELD_VOLE_NET_BENCH client 127.0.0.1 12120 12 8 3\n"
+            << "./build/main --SUBFIELD_VOLE_NET_BENCH server 0.0.0.0 12121 14 16 3\n"
+            << "./build/main --SUBFIELD_VOLE_NET_BENCH client 127.0.0.1 12121 14 16 3\n"
+            << "```\n\n"
             << "## Supported Parameters And Limitations\n\n"
             << "The noisy generic API supports compile-time coordinate dimensions in this harness for `m = 8, 16, 32, 64`. "
             << "However, noisy VOLE communication grows with the binary decomposition size of `Delta`; for "
@@ -290,6 +377,145 @@ namespace osuCrypto
         return subfieldVoleRunNoisyMedian<M>(log2N);
     }
 
+    template<u64 M>
+    SubfieldVoleTcpBenchRow subfieldVoleRunTcpRole(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        u64 log2N,
+        u64 reps)
+    {
+        using F = std::array<u8, M>;
+        using G = u8;
+        using Ctx = CoeffCtxArray<G, M>;
+        using VecF = typename Ctx::template Vec<F>;
+        using VecG = typename Ctx::template Vec<G>;
+
+        auto N = 1ull << log2N;
+        auto address = host + ":" + port;
+        Ctx ctx;
+        PRNG prng(sysRandomSeed());
+        std::vector<double> seconds;
+
+        SubfieldVoleTcpBenchRow row;
+        row.role = server ? "sender-server" : "receiver-client";
+        row.network = subfieldVoleTcpNetworkLabel(host);
+        row.address = address;
+        row.N = N;
+        row.log2N = log2N;
+        row.m = M;
+        row.reps = reps;
+        row.entries = M * N;
+        row.notes = "two_process_tcp; relation_verified_by_local_mode_not_cross_checked_between_roles";
+
+        auto estimatedPayload = subfieldVoleEstimatedNoisyPayload(N, M);
+        constexpr u64 maxPayloadBytes = 256ull * 1024 * 1024;
+        if (estimatedPayload > maxPayloadBytes)
+        {
+            row.ok = false;
+            row.notes = "unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes="
+                + std::to_string(estimatedPayload);
+            return row;
+        }
+
+        auto socket = cp::asioConnect(address, server);
+
+        for (u64 rep = 0; rep < reps; ++rep)
+        {
+            auto start = std::chrono::steady_clock::now();
+            if (server)
+            {
+                NoisyVoleSender<F, G, Ctx> sender;
+                DefaultBaseOT baseOt;
+                VecF b(N);
+                F delta{};
+                ctx.fromBlock(delta, prng.get<block>() ^ block(rep, M));
+                auto task = sender.send(delta, b, prng, baseOt, socket, ctx);
+                macoro::sync_wait(std::move(task));
+            }
+            else
+            {
+                NoisyVoleReceiver<F, G, Ctx> receiver;
+                DefaultBaseOT baseOt;
+                VecG c(N);
+                VecF a(N);
+                prng.get(c.data(), c.size());
+                auto task = receiver.receive(c, a, prng, baseOt, socket, ctx);
+                macoro::sync_wait(std::move(task));
+            }
+            auto end = std::chrono::steady_clock::now();
+            seconds.push_back(std::chrono::duration<double>(end - start).count());
+        }
+
+        macoro::sync_wait(socket.flush());
+
+        row.medianTotalSeconds = subfieldVoleMedian(seconds);
+        row.bytesSentByRole = socket.bytesSent();
+        row.bytesReceivedByRole = socket.bytesReceived();
+        row.localSocketBytes = row.bytesSentByRole + row.bytesReceivedByRole;
+        row.entriesPerSecond = row.medianTotalSeconds > 0
+            ? static_cast<double>(row.entries) / row.medianTotalSeconds
+            : 0;
+        row.rankOnePerSecond = row.medianTotalSeconds > 0 ? 1.0 / row.medianTotalSeconds : 0;
+        row.ok = true;
+        return row;
+    }
+
+    template<u64 M>
+    int subfieldVoleRunTcpRoleAndRecord(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        u64 log2N,
+        u64 reps)
+    {
+        auto row = subfieldVoleRunTcpRole<M>(server, host, port, log2N, reps);
+
+        std::cout << std::fixed << std::setprecision(6)
+                  << "SUBFIELD_VOLE_NET_BENCH"
+                  << " role=" << row.role
+                  << " network=" << row.network
+                  << " address=" << row.address
+                  << " N=" << row.N
+                  << " log2N=" << row.log2N
+                  << " m=" << row.m
+                  << " reps=" << row.reps
+                  << " median_total_s=" << row.medianTotalSeconds
+                  << " bytes_sent_by_role=" << row.bytesSentByRole
+                  << " bytes_received_by_role=" << row.bytesReceivedByRole
+                  << " total_local_socket_bytes=" << row.localSocketBytes
+                  << " entries=" << row.entries
+                  << " entries_per_s=" << row.entriesPerSecond
+                  << " rank_one_per_s=" << row.rankOnePerSecond
+                  << " " << (row.ok ? "PASS" : "UNSUPPORTED")
+                  << " notes=" << row.notes
+                  << std::endl;
+
+        subfieldVoleAppendTcpCsv(row);
+        return row.ok ? 0 : 1;
+    }
+
+    inline int subfieldVoleRunTcpDispatch(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        u64 log2N,
+        u64 m,
+        u64 reps)
+    {
+        if (m == 8)
+            return subfieldVoleRunTcpRoleAndRecord<8>(server, host, port, log2N, reps);
+        if (m == 16)
+            return subfieldVoleRunTcpRoleAndRecord<16>(server, host, port, log2N, reps);
+        if (m == 32)
+            return subfieldVoleRunTcpRoleAndRecord<32>(server, host, port, log2N, reps);
+        if (m == 64)
+            return subfieldVoleRunTcpRoleAndRecord<64>(server, host, port, log2N, reps);
+
+        std::cerr << "unsupported m=" << m << "; supported values are 8,16,32,64" << std::endl;
+        return 1;
+    }
+
     inline void subfieldVolePrintRow(const SubfieldVoleNetBenchRow& row)
     {
         std::cout << std::fixed << std::setprecision(6)
@@ -332,5 +558,41 @@ namespace osuCrypto
         }
 
         return anyOk ? 0 : 1;
+    }
+
+    inline int SubfieldVoleNetBench(int argc, char** argv)
+    {
+        subfieldVoleWriteNotes();
+
+        if (argc == 3)
+            return SubfieldVoleNetBench(static_cast<u64>(std::stoull(argv[2])));
+
+        if (argc == 8)
+        {
+            std::string role = argv[2];
+            std::string host = argv[3];
+            std::string port = argv[4];
+            auto log2N = static_cast<u64>(std::stoull(argv[5]));
+            auto m = static_cast<u64>(std::stoull(argv[6]));
+            auto reps = static_cast<u64>(std::stoull(argv[7]));
+
+            if (reps == 0)
+            {
+                std::cerr << "reps must be positive" << std::endl;
+                return 1;
+            }
+
+            if (role == "server")
+                return subfieldVoleRunTcpDispatch(true, host, port, log2N, m, reps);
+            if (role == "client")
+                return subfieldVoleRunTcpDispatch(false, host, port, log2N, m, reps);
+        }
+
+        std::cerr
+            << "Usage:\n"
+            << "  ./build/main --SUBFIELD_VOLE_NET_BENCH <log2N>\n"
+            << "  ./build/main --SUBFIELD_VOLE_NET_BENCH server <host_or_0.0.0.0> <port> <log2N> <m> <reps>\n"
+            << "  ./build/main --SUBFIELD_VOLE_NET_BENCH client <host> <port> <log2N> <m> <reps>\n";
+        return 1;
     }
 }
