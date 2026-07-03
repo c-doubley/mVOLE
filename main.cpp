@@ -18,6 +18,7 @@
 #include "ModuleMvolePprfIntegration.h"
 #include "ModuleMvoleCoordPprfIntegration.h"
 #include "SubfieldVoleNetBench.h"
+#include "RmvolePprfNetSetupTest.h"
 //#define trial 2
 //#define num_thread 1
 using namespace osuCrypto;
@@ -39,6 +40,7 @@ void printUsage() {
     printf("  --MODULE_MVOLE_PPRF\tTests RM-VOLE setup using shared-path vector-valued PPRF prototype.\n");
     printf("  --MODULE_MVOLE_COORD_PPRF\tBenchmarks RM-VOLE setup using coordinate-wise scalar PPRF prototype.\n");
     printf("  --SUBFIELD_VOLE_NET_BENCH\tBenchmarks libOTe generic subfield VOLE over loopback coproto sockets.\n");
+    printf("  --RMVOLE_PPRF_NET_SETUP\tTests RM-VOLE setup PPRF layer over local coproto sockets.\n");
 }
 
 int main(int argc, char **argv)
@@ -50,6 +52,9 @@ int main(int argc, char **argv)
     {
         if (strcmp(argv[1], "--SUBFIELD_VOLE_NET_BENCH") ==0) {
             return SubfieldVoleNetBench(argc, argv);
+        }
+        if (strcmp(argv[1], "--RMVOLE_PPRF_NET_SETUP") ==0) {
+            return RmvolePprfNetSetupTest(argc, argv);
         }
 
         u64 num_var=std::atoi(argv[2]);
