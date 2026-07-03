@@ -1,0 +1,11 @@
+method,network,role,log2N,N,m,sender_median_s,client_median_s,reported_total_wire_bytes,entries,entries_per_s,bytes_per_entry,notes
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,12,4096,8,0.021017802,0.019981095,6298176,32768,1559059.315527,192.205078,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,12,4096,16,0.057223168,0.056307988,25179072,65536,1145270.391181,384.202148,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,12,4096,32,0.138102718,0.137908322,100689600,131072,949090.661633,768.200684,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,12,4096,64,0.463360000,0.459555694,402705600,262144,565745.856354,1536.199951,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,14,16384,8,0.066535750,0.065745314,25172544,131072,1969948.486340,192.051270,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,14,16384,16,0.212170866,0.209018431,100676544,262144,1235532.497662,384.050537,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,14,16384,32,0.501728666,0.507499674,402679488,524288,1033080.466570,768.050171,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,16,65536,8,0.257735621,0.251839278,100670016,524288,2034208.534955,192.012817,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,16,65536,16,0.838305149,0.810208813,402666432,1048576,1250828.533322,384.012634,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters
+libOTe-noisy-subfield-VOLE,tcp-loopback,aggregate,18,262144,8,1.025925311,0.995609145,402659904,2097152,2044156.604301,192.003204,phase6d_grid_reps3; throughput_uses_max_sender_client_median; wire_bytes=sum_role_send_counters

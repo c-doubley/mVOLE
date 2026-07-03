@@ -57,16 +57,26 @@ Phase 6C loopback commands tested on one host:
 ./build/main --SUBFIELD_VOLE_NET_BENCH client 127.0.0.1 12121 14 16 3
 ```
 
-Measured TCP loopback results:
+## Phase 6D TCP Loopback Grid
 
-| log2N | m | role | median_total_s | bytes_sent_by_role | bytes_received_by_role | total_local_socket_bytes |
-| --- | --- | --- | --- | --- | --- | --- |
-| 12 | 8 | receiver-client | 0.020833590 | 6291624 | 6552 | 6298176 |
-| 12 | 8 | sender-server | 0.020986639 | 6552 | 6291624 | 6298176 |
-| 14 | 16 | receiver-client | 0.265669563 | 100663464 | 13080 | 100676544 |
-| 14 | 16 | sender-server | 0.268240809 | 13080 | 100663464 | 100676544 |
+Phase 6D ran the larger two-process TCP loopback grid with `reps=3` and fresh ports `12200` through `12209`. The raw per-role rows are appended to `docs/subfield_vole_tcp_loopback.csv`. The aggregate rows are in `docs/subfield_vole_tcp_loopback_summary.csv`.
 
-For the matched TCP loopback runs, total wire bytes by summing the two per-role send counters were 6,298,176 bytes for `log2N=12, m=8` and 100,676,544 bytes for `log2N=14, m=16`.
+All requested grid points completed successfully:
+
+| log2N | N | m | sender median s | client median s | total wire bytes | entries | entries/s | bytes/entry |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 12 | 4096 | 8 | 0.021017802 | 0.019981095 | 6298176 | 32768 | 1559059.315527 | 192.205078 |
+| 12 | 4096 | 16 | 0.057223168 | 0.056307988 | 25179072 | 65536 | 1145270.391181 | 384.202148 |
+| 12 | 4096 | 32 | 0.138102718 | 0.137908322 | 100689600 | 131072 | 949090.661633 | 768.200684 |
+| 12 | 4096 | 64 | 0.463360000 | 0.459555694 | 402705600 | 262144 | 565745.856354 | 1536.199951 |
+| 14 | 16384 | 8 | 0.066535750 | 0.065745314 | 25172544 | 131072 | 1969948.486340 | 192.051270 |
+| 14 | 16384 | 16 | 0.212170866 | 0.209018431 | 100676544 | 262144 | 1235532.497662 | 384.050537 |
+| 14 | 16384 | 32 | 0.501728666 | 0.507499674 | 402679488 | 524288 | 1033080.466570 | 768.050171 |
+| 16 | 65536 | 8 | 0.257735621 | 0.251839278 | 100670016 | 524288 | 2034208.534955 | 192.012817 |
+| 16 | 65536 | 16 | 0.838305149 | 0.810208813 | 402666432 | 1048576 | 1250828.533322 | 384.012634 |
+| 18 | 262144 | 8 | 1.025925311 | 0.995609145 | 402659904 | 2097152 | 2044156.604301 | 192.003204 |
+
+The aggregate `entries/s` column uses `entries / max(sender median s, client median s)`. `total wire bytes` is the sum of the sender and client `bytes_sent_by_role` counters for the matched run. No Phase 6D grid point failed, hit OOM, or was rejected by the payload guard.
 
 ## Supported Parameters And Limitations
 
