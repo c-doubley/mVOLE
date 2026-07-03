@@ -1,21 +1,38 @@
 # RM-VOLE PPRF Network Setup Test
 
-Phase 6E-1 adds `RmvolePprfNetSetupTest.h` and CLI flag `--RMVOLE_PPRF_NET_SETUP`.
+Phase 6E adds `RmvolePprfNetSetupTest.h` and CLI flag `--RMVOLE_PPRF_NET_SETUP`.
+
+## Modes
+
+```bash
+./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m>
+./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps>
+./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps>
+```
+
+Example TCP loopback run:
+
+```bash
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3
+```
 
 ## API Used
 
 - libOTe API: `RegularPprfSender<F,F,Ctx>` and `RegularPprfReceiver<F,F,Ctx>` from `libOTe/Tools/Pprf/RegularPprf.h`.
 - Field instantiation: `F = u64`, `Ctx = CoeffCtxIntegerPrime_64`.
-- Network channel: `coproto::LocalAsyncSocket::makePair()`.
-- Base OT: `DefaultBaseOT::send()` and `DefaultBaseOT::receive()` are run over the same local async socket pair before each scalar RegularPprf expansion.
+- Local channel: `coproto::LocalAsyncSocket::makePair()`.
+- TCP channel: `coproto::asioConnect(address, server)`, with server running `RegularPprfSender` and client running `RegularPprfReceiver`.
+- Base OT: `DefaultBaseOT::send()` and `DefaultBaseOT::receive()` are run before every scalar RegularPprf instance.
 - PPRF expansion: sender calls `expand(socket, beta, seed, senderOut, PprfOutputFormat::ByTreeIndex, true, 1, ctx)` and receiver calls `expand(socket, receiverOut, PprfOutputFormat::ByTreeIndex, true, 1, ctx)`.
 
 ## Relation Tested
 
-For `N = 2^logN`, `blockSize = N/t`, and each block `i`, the harness centrally samples an offset `offset_i`, a nonzero scalar `s_i`, and extension-coordinate scalars `Delta_h`. For coordinate `h`, it programs:
+For `N = 2^logN`, `blockSize = N/t`, and each block `i`, the harness centrally samples sparse offsets and nonzero scalars for both `s` and `e`, plus extension-coordinate scalars `Delta_h`. It programs two sparse vectors:
 
 ```text
-beta_{i,h} = Delta_h * s_i in F_p
+betaS_{i,h} = Delta_h * s_i in F_p
+betaE_{i,h} = Delta_h * e_i in F_p
 ```
 
 RegularPprf reconstructs `receiverOut = senderOut + beta` at the selected point and `receiverOut = senderOut` elsewhere. The RM-VOLE setup shares are interpreted as:
@@ -23,18 +40,46 @@ RegularPprf reconstructs `receiverOut = senderOut + beta` at the selected point 
 ```text
 share0_h[j] = -senderOut_h[j]
 share1_h[j] =  receiverOut_h[j]
-share0_h[j] + share1_h[j] = beta_{i,h} at j = i*blockSize + offset_i, else 0
+share0_h[j] + share1_h[j] = betaS or betaE at its support, else 0
 ```
 
-Verification opens the simulated local shares and checks all `m*N` scalar positions.
+Local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP mode has the client centrally generate correctness-test inputs and send each scalar `beta` vector to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.
+
+## Counters And Bytes
+
+`scalar_pprf_count_s = m`, `scalar_pprf_count_e = m`, `total_scalar_pprf_count = 2*m`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup.csv`.
+
+The socket byte counters in TCP mode are local per process and include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client), in addition to `DefaultBaseOT` and `RegularPprf` messages. The repeated `DefaultBaseOT` per scalar PPRF is a likely overestimate and a future batching/reuse target.
+
+## Phase 6E-2 TCP Smoke Results
+
+Commands tested on one host:
+
+```bash
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3
+
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12221 14 16 16 3
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12221 14 16 16 3
+```
+
+Both `s` and `e` passed reconstruction in the client verifier.
+
+| logN | t | m | role | median s setup s | median e setup s | median total setup s | verify s | bytes sent | bytes received |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 12 | 8 | 8 | sender-server | 0.040039 | 0.039952 | 0.080028 | 0.000000 | 1686168 | 120984 |
+| 12 | 8 | 8 | receiver-client | 0.040050 | 0.039947 | 0.080043 | 0.000222 | 120984 | 1686168 |
+| 14 | 16 | 16 | sender-server | 0.165284 | 0.166144 | 0.332708 | 0.000000 | 13080600 | 535320 |
+| 14 | 16 | 16 | receiver-client | 0.165296 | 0.166145 | 0.332746 | 0.001741 | 535320 | 13080600 |
 
 ## Caveats
 
-- This is a correctness/API harness, not secure input generation. The test centrally samples `Delta`, `s`, offsets, and then installs receiver choice bits.
-- Phase 6E-1 runs `m` independent scalar RegularPprf instances for sparse `s` only. Sparse `e` is the next duplicate path, not included here.
-- This is not the final optimized shared-path vector PPRF. It repeats base OT and PPRF setup independently per coordinate.
-- It uses true coproto sockets and libOTe base OT/PPRF network messages in one process, but it is not a two-process TCP benchmark yet.
+- This is a semi-honest correctness/API harness, not secure input generation.
+- It uses real coproto sockets and libOTe `DefaultBaseOT`/`RegularPprf` network messages.
+- It still uses centralized test input generation.
+- It runs `m` independent scalar RegularPprf instances for `s` and another `m` for `e`; it is not the final shared-path vector-valued PPRF.
+- It is setup only, not the full RM-VOLE expand path or LAN runtime for the whole construction.
 
 ## Next Step
 
-Phase 6E-2 should split the same sender/receiver work over TCP loopback/LAN. After that, implement the shared-path vector-valued PPRF so path/base material is paid once while coordinate payloads remain vector-valued.
+Batch or reuse base OT material across scalar PPRFs where valid, then replace the coordinate-wise adapter with a shared-path vector-valued PPRF so path/base material is paid once and only coordinate payloads scale with `m`.
