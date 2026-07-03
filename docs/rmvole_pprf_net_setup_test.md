@@ -5,16 +5,20 @@ Phase 6E adds `RmvolePprfNetSetupTest.h` and CLI flag `--RMVOLE_PPRF_NET_SETUP`.
 ## Modes
 
 ```bash
-./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m>
-./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps>
-./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps>
+./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench]
+./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench]
+./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench]
 ```
+
+The optional mode defaults to `verify` for backward compatibility. `verify` opens shares for correctness. `bench` runs only `DefaultBaseOT` plus `RegularPprf` setup and does not exchange correctness-opening data.
 
 Example TCP loopback run:
 
 ```bash
-./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3
-./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3 verify
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3 verify
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12221 12 8 8 3 bench
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12221 12 8 8 3 bench
 ```
 
 ## API Used
@@ -43,34 +47,39 @@ share1_h[j] =  receiverOut_h[j]
 share0_h[j] + share1_h[j] = betaS or betaE at its support, else 0
 ```
 
-Local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP mode has the client centrally generate correctness-test inputs and send each scalar `beta` vector to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.
+In `verify` mode, local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP verify mode has the client centrally generate correctness-test inputs and send each scalar `beta` vector to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.
+
+In `bench` mode, the sender locally samples the programmed scalar payloads and the receiver locally samples its regular-block choices. The parties still run real `DefaultBaseOT` and `RegularPprf` over the selected socket, but they do not send `beta`, `senderOut`, or reconstruction-opening data.
 
 ## Counters And Bytes
 
-`scalar_pprf_count_s = m`, `scalar_pprf_count_e = m`, `total_scalar_pprf_count = 2*m`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup.csv`.
+`scalar_pprf_count_s = m*t`, `scalar_pprf_count_e = m*t`, `total_scalar_pprf_count = 2*m*t`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup_clean.csv`.
 
-The socket byte counters in TCP mode are local per process and include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client), in addition to `DefaultBaseOT` and `RegularPprf` messages. The repeated `DefaultBaseOT` per scalar PPRF is a likely overestimate and a future batching/reuse target.
+`bench` socket counters are the clean protocol measurement for this harness: `DefaultBaseOT` plus `RegularPprf` only. `verify` socket counters include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client). The `harness_metadata_bytes` column is a payload-size estimate for those correctness messages; message framing can make `verify - bench` slightly larger. The repeated `DefaultBaseOT` per scalar PPRF is a likely overestimate and a future batching/reuse target.
 
-## Phase 6E-2 TCP Smoke Results
+## Phase 6E-3 TCP Smoke Results
 
 Commands tested on one host:
 
 ```bash
-./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3
-./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3
-
-./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12221 14 16 16 3
-./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12221 14 16 16 3
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12230 12 8 8 3 verify
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12230 12 8 8 3 verify
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12231 12 8 8 3 bench
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12231 12 8 8 3 bench
+./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12232 14 16 16 3 bench
+./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12232 14 16 16 3 bench
 ```
 
-Both `s` and `e` passed reconstruction in the client verifier.
+| mode | logN | t | m | role | median total setup s | local socket bytes | clean protocol bytes | harness metadata bytes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| verify | 12 | 8 | 8 | sender-server | 0.124626 | 1807152 | 231216 | 1575936 |
+| verify | 12 | 8 | 8 | receiver-client | 0.124652 | 1807152 | 231216 | 1575936 |
+| bench | 12 | 8 | 8 | sender-server | 0.094229 | 230448 | 230448 | 0 |
+| bench | 12 | 8 | 8 | receiver-client | 0.094204 | 230448 | 230448 | 0 |
+| bench | 14 | 16 | 16 | sender-server | 0.401627 | 1019184 | 1019184 | 0 |
+| bench | 14 | 16 | 16 | receiver-client | 0.401663 | 1019184 | 1019184 | 0 |
 
-| logN | t | m | role | median s setup s | median e setup s | median total setup s | verify s | bytes sent | bytes received |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 12 | 8 | 8 | sender-server | 0.040039 | 0.039952 | 0.080028 | 0.000000 | 1686168 | 120984 |
-| 12 | 8 | 8 | receiver-client | 0.040050 | 0.039947 | 0.080043 | 0.000222 | 120984 | 1686168 |
-| 14 | 16 | 16 | sender-server | 0.165284 | 0.166144 | 0.332708 | 0.000000 | 13080600 | 535320 |
-| 14 | 16 | 16 | receiver-client | 0.165296 | 0.166145 | 0.332746 | 0.001741 | 535320 | 13080600 |
+At `logN=12,t=8,m=8`, verify mode used 1,807,152 local socket bytes per role while bench mode used 230,448. The verification-only difference was 1,576,704 bytes per role, dominated by the `beta` and `senderOut` correctness traffic.
 
 ## Caveats
 

@@ -22,6 +22,26 @@
 
 namespace osuCrypto
 {
+    enum class RmvolePprfSetupMode
+    {
+        Verify,
+        Bench
+    };
+
+    inline std::string rmvolePprfModeName(RmvolePprfSetupMode mode)
+    {
+        return mode == RmvolePprfSetupMode::Bench ? "bench" : "verify";
+    }
+
+    inline RmvolePprfSetupMode rmvolePprfParseMode(const std::string& value)
+    {
+        if (value == "verify")
+            return RmvolePprfSetupMode::Verify;
+        if (value == "bench")
+            return RmvolePprfSetupMode::Bench;
+        throw std::runtime_error("RMVOLE_PPRF_NET_SETUP mode must be verify or bench.");
+    }
+
     struct RmvolePprfNetSetupParams
     {
         u64 logN = 0;
@@ -34,12 +54,15 @@ namespace osuCrypto
     struct RmvolePprfNetSetupResult
     {
         bool ok = false;
+        std::string mode = "verify";
         double sSetupSeconds = 0;
         double eSetupSeconds = 0;
         double verifySeconds = 0;
         u64 senderBytes = 0;
         u64 receiverBytes = 0;
         u64 totalBytes = 0;
+        u64 harnessMetadataBytes = 0;
+        u64 cleanProtocolBytes = 0;
         u64 scalarPprfCountS = 0;
         u64 scalarPprfCountE = 0;
         u64 totalScalarPprfCount = 0;
@@ -52,6 +75,7 @@ namespace osuCrypto
     struct RmvolePprfTcpSetupRow
     {
         std::string method = "RMVOLE-PPRF-RegularPprf";
+        std::string mode = "verify";
         std::string role;
         std::string network;
         std::string address;
@@ -68,6 +92,8 @@ namespace osuCrypto
         u64 bytesSentByRole = 0;
         u64 bytesReceivedByRole = 0;
         u64 totalLocalSocketBytes = 0;
+        u64 harnessMetadataBytes = 0;
+        u64 cleanProtocolBytes = 0;
         u64 scalarPprfCountS = 0;
         u64 scalarPprfCountE = 0;
         u64 totalScalarPprfCount = 0;
@@ -265,9 +291,9 @@ namespace osuCrypto
         const RmvolePprfNetSetupParams& params,
         RmvolePprfNetSetupResult& result)
     {
-        result.scalarPprfCountS = params.m;
-        result.scalarPprfCountE = params.m;
-        result.totalScalarPprfCount = 2 * params.m;
+        result.scalarPprfCountS = params.m * params.t;
+        result.scalarPprfCountE = params.m * params.t;
+        result.totalScalarPprfCount = 2 * params.m * params.t;
         result.expandedLeavesPerCoordinatePerSparseVector = params.N;
         result.totalScalarExpandedLeaves = 2 * params.m * params.N;
         result.totalScalarExpandedLeavesOver2MN =
@@ -278,9 +304,9 @@ namespace osuCrypto
         const RmvolePprfNetSetupParams& params,
         RmvolePprfTcpSetupRow& row)
     {
-        row.scalarPprfCountS = params.m;
-        row.scalarPprfCountE = params.m;
-        row.totalScalarPprfCount = 2 * params.m;
+        row.scalarPprfCountS = params.m * params.t;
+        row.scalarPprfCountE = params.m * params.t;
+        row.totalScalarPprfCount = 2 * params.m * params.t;
         row.expandedLeavesPerCoordinatePerSparseVector = params.N;
         row.totalScalarExpandedLeaves = 2 * params.m * params.N;
         row.totalScalarExpandedLeavesOver2MN =
@@ -297,6 +323,7 @@ namespace osuCrypto
         cp::Socket& receiverSocket,
         double& setupSeconds,
         double& verifySeconds,
+        RmvolePprfSetupMode mode,
         PRNG& prng,
         Ctx& ctx)
     {
@@ -356,11 +383,14 @@ namespace osuCrypto
             macoro::sync_wait(macoro::when_all_ready(std::move(sendPprf), std::move(recvPprf)));
             setupSeconds += omp_get_wtime() - start;
 
-            auto verifyStart = omp_get_wtime();
-            auto ok = rmvolePprfVerifyScalar<F, Ctx>(params, input, beta, senderOut, receiverOut, h, label, ctx);
-            verifySeconds += omp_get_wtime() - verifyStart;
-            if (!ok)
-                return false;
+            if (mode == RmvolePprfSetupMode::Verify)
+            {
+                auto verifyStart = omp_get_wtime();
+                auto ok = rmvolePprfVerifyScalar<F, Ctx>(params, input, beta, senderOut, receiverOut, h, label, ctx);
+                verifySeconds += omp_get_wtime() - verifyStart;
+                if (!ok)
+                    return false;
+            }
         }
 
         return true;
@@ -369,11 +399,15 @@ namespace osuCrypto
     template<typename F, typename Ctx>
     RmvolePprfNetSetupResult rmvolePprfRunLocalTyped(
         const RmvolePprfNetSetupParams& params,
+        RmvolePprfSetupMode mode,
         Ctx ctx = {})
     {
         RmvolePprfNetSetupResult result;
         rmvolePprfFillCounters(params, result);
-        result.notes = "local_async_socket; DefaultBaseOT repeated per scalar RegularPprf; s_and_e; centralized_offsets_delta_s_e";
+        result.mode = rmvolePprfModeName(mode);
+        result.notes = mode == RmvolePprfSetupMode::Verify
+            ? "local_async_socket; verify; DefaultBaseOT repeated per scalar RegularPprf; s_and_e; centralized_offsets_delta_s_e"
+            : "local_async_socket; bench; DefaultBaseOT repeated per scalar RegularPprf; no_reconstruction_opening";
 
         PRNG prng(sysRandomSeed());
         std::vector<F> delta(params.m);
@@ -386,41 +420,43 @@ namespace osuCrypto
 
         result.ok = rmvolePprfRunLocalSparseVector<F, Ctx>(
             params, delta, sparseS, "s", sockets[0], sockets[1],
-            result.sSetupSeconds, result.verifySeconds, prng, ctx);
+            result.sSetupSeconds, result.verifySeconds, mode, prng, ctx);
         if (result.ok)
         {
             result.ok = rmvolePprfRunLocalSparseVector<F, Ctx>(
                 params, delta, sparseE, "e", sockets[0], sockets[1],
-                result.eSetupSeconds, result.verifySeconds, prng, ctx);
+                result.eSetupSeconds, result.verifySeconds, mode, prng, ctx);
         }
 
         result.senderBytes = sockets[0].bytesSent();
         result.receiverBytes = sockets[1].bytesSent();
         result.totalBytes = result.senderBytes + result.receiverBytes;
+        result.cleanProtocolBytes = result.totalBytes;
 
         return result;
     }
 
     inline void rmvolePprfAppendTcpCsv(const RmvolePprfTcpSetupRow& row)
     {
-        const auto path = std::filesystem::path("docs/rmvole_pprf_tcp_setup.csv");
+        const auto path = std::filesystem::path("docs/rmvole_pprf_tcp_setup_clean.csv");
         auto needsHeader = row.role == "sender-server"
             && (!std::filesystem::exists(path) || std::filesystem::file_size(path) == 0);
         std::ofstream out(path, std::ios::app);
         if (!out)
-            throw std::runtime_error("failed to open docs/rmvole_pprf_tcp_setup.csv");
+            throw std::runtime_error("failed to open docs/rmvole_pprf_tcp_setup_clean.csv");
 
         if (needsHeader)
         {
-            out << "method,role,network,address,logN,N,t,m,blockSize,reps,"
+            out << "method,mode,role,network,address,logN,N,t,m,blockSize,reps,"
                 << "median_s_setup_s,median_e_setup_s,median_total_setup_s,median_verify_s,"
-                << "bytes_sent_by_role,bytes_received_by_role,total_local_socket_bytes,"
+                << "bytes_sent_by_role,bytes_received_by_role,total_local_socket_bytes,harness_metadata_bytes,clean_protocol_bytes,"
                 << "scalar_pprf_count_s,scalar_pprf_count_e,total_scalar_pprf_count,"
                 << "expanded_leaves_per_coordinate_per_sparse_vector,total_scalar_expanded_leaves,"
                 << "total_scalar_expanded_leaves_over_2mN,ok,notes\n";
         }
 
         out << rmvolePprfCsvEscape(row.method) << ','
+            << rmvolePprfCsvEscape(row.mode) << ','
             << rmvolePprfCsvEscape(row.role) << ','
             << rmvolePprfCsvEscape(row.network) << ','
             << rmvolePprfCsvEscape(row.address) << ','
@@ -437,6 +473,8 @@ namespace osuCrypto
             << row.bytesSentByRole << ','
             << row.bytesReceivedByRole << ','
             << row.totalLocalSocketBytes << ','
+            << row.harnessMetadataBytes << ','
+            << row.cleanProtocolBytes << ','
             << row.scalarPprfCountS << ','
             << row.scalarPprfCountE << ','
             << row.totalScalarPprfCount << ','
@@ -452,7 +490,8 @@ namespace osuCrypto
         const RmvolePprfNetSetupParams& params,
         cp::Socket& socket,
         PRNG& prng,
-        Ctx& ctx)
+        Ctx& ctx,
+        RmvolePprfSetupMode mode)
     {
         using VecF = typename Ctx::template Vec<F>;
 
@@ -461,7 +500,15 @@ namespace osuCrypto
 
         VecF beta, senderOut;
         ctx.resize(beta, params.t);
-        macoro::sync_wait(socket.recv(beta));
+        if (mode == RmvolePprfSetupMode::Verify)
+        {
+            macoro::sync_wait(socket.recv(beta));
+        }
+        else
+        {
+            for (u64 i = 0; i < params.t; ++i)
+                rmvolePprfSampleNonzero(beta[i], prng, ctx);
+        }
 
         std::vector<std::array<block, 2>> senderBaseOts(sender.baseOtCount());
 #ifdef LIBOTE_HAS_BASE_OT
@@ -485,7 +532,8 @@ namespace osuCrypto
             ctx);
         macoro::sync_wait(std::move(sendPprf));
 
-        macoro::sync_wait(socket.send(coproto::copy(senderOut)));
+        if (mode == RmvolePprfSetupMode::Verify)
+            macoro::sync_wait(socket.send(coproto::copy(senderOut)));
     }
 
     template<typename F, typename Ctx>
@@ -498,7 +546,8 @@ namespace osuCrypto
         cp::Socket& socket,
         PRNG& prng,
         Ctx& ctx,
-        double& verifySeconds)
+        double& verifySeconds,
+        RmvolePprfSetupMode mode)
     {
         using VecF = typename Ctx::template Vec<F>;
 
@@ -508,7 +557,8 @@ namespace osuCrypto
         receiver.setChoiceBits(choices);
 
         auto beta = rmvolePprfBuildBeta<F, Ctx>(params, delta, input, coord, ctx);
-        macoro::sync_wait(socket.send(coproto::copy(beta)));
+        if (mode == RmvolePprfSetupMode::Verify)
+            macoro::sync_wait(socket.send(coproto::copy(beta)));
 
         std::vector<block> receiverBaseOts(receiver.baseOtCount());
 #ifdef LIBOTE_HAS_BASE_OT
@@ -522,7 +572,8 @@ namespace osuCrypto
 
         VecF receiverOut, senderOut;
         ctx.resize(receiverOut, params.N);
-        ctx.resize(senderOut, params.N);
+        if (mode == RmvolePprfSetupMode::Verify)
+            ctx.resize(senderOut, params.N);
 
         auto recvPprf = receiver.expand(
             socket,
@@ -532,6 +583,9 @@ namespace osuCrypto
             1,
             ctx);
         macoro::sync_wait(std::move(recvPprf));
+
+        if (mode == RmvolePprfSetupMode::Bench)
+            return true;
 
         macoro::sync_wait(socket.recv(senderOut));
 
@@ -546,11 +600,12 @@ namespace osuCrypto
         const RmvolePprfNetSetupParams& params,
         cp::Socket& socket,
         PRNG& prng,
-        Ctx& ctx)
+        Ctx& ctx,
+        RmvolePprfSetupMode mode)
     {
         auto start = omp_get_wtime();
         for (u64 h = 0; h < params.m; ++h)
-            rmvolePprfTcpServerScalar<F, Ctx>(params, socket, prng, ctx);
+            rmvolePprfTcpServerScalar<F, Ctx>(params, socket, prng, ctx, mode);
         return omp_get_wtime() - start;
     }
 
@@ -564,13 +619,14 @@ namespace osuCrypto
         PRNG& prng,
         Ctx& ctx,
         double& setupSeconds,
-        double& verifySeconds)
+        double& verifySeconds,
+        RmvolePprfSetupMode mode)
     {
         auto start = omp_get_wtime();
         for (u64 h = 0; h < params.m; ++h)
         {
             auto ok = rmvolePprfTcpClientScalar<F, Ctx>(
-                params, delta, input, label, h, socket, prng, ctx, verifySeconds);
+                params, delta, input, label, h, socket, prng, ctx, verifySeconds, mode);
             if (!ok)
             {
                 setupSeconds += omp_get_wtime() - start;
@@ -588,6 +644,7 @@ namespace osuCrypto
         const std::string& port,
         const RmvolePprfNetSetupParams& params,
         u64 reps,
+        RmvolePprfSetupMode mode,
         Ctx ctx = {})
     {
         auto address = host + ":" + port;
@@ -596,6 +653,7 @@ namespace osuCrypto
         std::vector<double> sTimes, eTimes, totalTimes, verifyTimes;
 
         RmvolePprfTcpSetupRow row;
+        row.mode = rmvolePprfModeName(mode);
         row.role = server ? "sender-server" : "receiver-client";
         row.network = rmvolePprfTcpNetworkLabel(host);
         row.address = address;
@@ -606,9 +664,13 @@ namespace osuCrypto
         row.blockSize = params.blockSize;
         row.reps = reps;
         rmvolePprfFillTcpCounters(params, row);
-        row.notes = server
-            ? "tcp_two_process; server_runs_RegularPprfSender; receives_test_beta; sends_sender_output_for_opening; DefaultBaseOT_repeated_per_scalar"
-            : "tcp_two_process; client_generates_centralized_test_inputs; verifies_s_and_e; DefaultBaseOT_repeated_per_scalar";
+        row.notes = mode == RmvolePprfSetupMode::Verify
+            ? (server
+                ? "tcp_two_process; verify; server_runs_RegularPprfSender; receives_test_beta; sends_sender_output_for_opening; DefaultBaseOT_repeated_per_scalar"
+                : "tcp_two_process; verify; client_generates_centralized_test_inputs; verifies_s_and_e; DefaultBaseOT_repeated_per_scalar")
+            : (server
+                ? "tcp_two_process; bench; server_runs_RegularPprfSender; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_scalar"
+                : "tcp_two_process; bench; receiver_choices_local; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_scalar");
         row.ok = true;
 
         for (u64 rep = 0; rep < reps; ++rep)
@@ -619,8 +681,8 @@ namespace osuCrypto
 
             if (server)
             {
-                sSetup = rmvolePprfTcpServerSparseVector<F, Ctx>(params, socket, prng, ctx);
-                eSetup = rmvolePprfTcpServerSparseVector<F, Ctx>(params, socket, prng, ctx);
+                sSetup = rmvolePprfTcpServerSparseVector<F, Ctx>(params, socket, prng, ctx, mode);
+                eSetup = rmvolePprfTcpServerSparseVector<F, Ctx>(params, socket, prng, ctx, mode);
             }
             else
             {
@@ -631,11 +693,11 @@ namespace osuCrypto
                 auto sparseE = rmvolePprfSampleSparseInput<F, Ctx>(params, prng, ctx);
 
                 row.ok = rmvolePprfTcpClientSparseVector<F, Ctx>(
-                    params, delta, sparseS, "s", socket, prng, ctx, sSetup, verify);
+                    params, delta, sparseS, "s", socket, prng, ctx, sSetup, verify, mode);
                 if (row.ok)
                 {
                     row.ok = rmvolePprfTcpClientSparseVector<F, Ctx>(
-                        params, delta, sparseE, "e", socket, prng, ctx, eSetup, verify);
+                        params, delta, sparseE, "e", socket, prng, ctx, eSetup, verify, mode);
                 }
             }
 
@@ -657,6 +719,12 @@ namespace osuCrypto
         row.bytesSentByRole = socket.bytesSent();
         row.bytesReceivedByRole = socket.bytesReceived();
         row.totalLocalSocketBytes = row.bytesSentByRole + row.bytesReceivedByRole;
+        row.harnessMetadataBytes = mode == RmvolePprfSetupMode::Verify
+            ? 2 * reps * params.m * (params.t + params.N) * static_cast<u64>(sizeof(F))
+            : 0;
+        row.cleanProtocolBytes = row.totalLocalSocketBytes >= row.harnessMetadataBytes
+            ? row.totalLocalSocketBytes - row.harnessMetadataBytes
+            : 0;
         return row;
     }
 
@@ -664,6 +732,7 @@ namespace osuCrypto
     {
         std::cout << std::fixed << std::setprecision(6)
                   << "RMVOLE_PPRF_NET_SETUP"
+                  << " mode=" << row.mode
                   << " role=" << row.role
                   << " network=" << row.network
                   << " address=" << row.address
@@ -680,6 +749,8 @@ namespace osuCrypto
                   << " sender_bytes_sent=" << row.bytesSentByRole
                   << " receiver_bytes_sent=" << row.bytesReceivedByRole
                   << " total_bytes=" << row.totalLocalSocketBytes
+                  << " harness_metadata_bytes=" << row.harnessMetadataBytes
+                  << " clean_protocol_bytes=" << row.cleanProtocolBytes
                   << " scalar_pprf_count_s=" << row.scalarPprfCountS
                   << " scalar_pprf_count_e=" << row.scalarPprfCountE
                   << " total_scalar_pprf_count=" << row.totalScalarPprfCount
@@ -699,14 +770,17 @@ namespace osuCrypto
             << "Phase 6E adds `RmvolePprfNetSetupTest.h` and CLI flag `--RMVOLE_PPRF_NET_SETUP`.\n\n"
             << "## Modes\n\n"
             << "```bash\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m>\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps>\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps>\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench]\n"
             << "```\n\n"
+            << "The optional mode defaults to `verify` for backward compatibility. `verify` opens shares for correctness. `bench` runs only `DefaultBaseOT` plus `RegularPprf` setup and does not exchange correctness-opening data.\n\n"
             << "Example TCP loopback run:\n\n"
             << "```bash\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3 verify\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3 verify\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12221 12 8 8 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12221 12 8 8 3 bench\n"
             << "```\n\n"
             << "## API Used\n\n"
             << "- libOTe API: `RegularPprfSender<F,F,Ctx>` and `RegularPprfReceiver<F,F,Ctx>` from `libOTe/Tools/Pprf/RegularPprf.h`.\n"
@@ -727,10 +801,30 @@ namespace osuCrypto
             << "share1_h[j] =  receiverOut_h[j]\n"
             << "share0_h[j] + share1_h[j] = betaS or betaE at its support, else 0\n"
             << "```\n\n"
-            << "Local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP mode has the client centrally generate correctness-test inputs and send each scalar `beta` vector to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.\n\n"
+            << "In `verify` mode, local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP verify mode has the client centrally generate correctness-test inputs and send each scalar `beta` vector to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.\n\n"
+            << "In `bench` mode, the sender locally samples the programmed scalar payloads and the receiver locally samples its regular-block choices. The parties still run real `DefaultBaseOT` and `RegularPprf` over the selected socket, but they do not send `beta`, `senderOut`, or reconstruction-opening data.\n\n"
             << "## Counters And Bytes\n\n"
-            << "`scalar_pprf_count_s = m`, `scalar_pprf_count_e = m`, `total_scalar_pprf_count = 2*m`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup.csv`.\n\n"
-            << "The socket byte counters in TCP mode are local per process and include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client), in addition to `DefaultBaseOT` and `RegularPprf` messages. The repeated `DefaultBaseOT` per scalar PPRF is a likely overestimate and a future batching/reuse target.\n\n"
+            << "`scalar_pprf_count_s = m*t`, `scalar_pprf_count_e = m*t`, `total_scalar_pprf_count = 2*m*t`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup_clean.csv`.\n\n"
+            << "`bench` socket counters are the clean protocol measurement for this harness: `DefaultBaseOT` plus `RegularPprf` only. `verify` socket counters include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client). The `harness_metadata_bytes` column is a payload-size estimate for those correctness messages; message framing can make `verify - bench` slightly larger. The repeated `DefaultBaseOT` per scalar PPRF is a likely overestimate and a future batching/reuse target.\n\n"
+            << "## Phase 6E-3 TCP Smoke Results\n\n"
+            << "Commands tested on one host:\n\n"
+            << "```bash\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12230 12 8 8 3 verify\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12230 12 8 8 3 verify\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12231 12 8 8 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12231 12 8 8 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12232 14 16 16 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12232 14 16 16 3 bench\n"
+            << "```\n\n"
+            << "| mode | logN | t | m | role | median total setup s | local socket bytes | clean protocol bytes | harness metadata bytes |\n"
+            << "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
+            << "| verify | 12 | 8 | 8 | sender-server | 0.124626 | 1807152 | 231216 | 1575936 |\n"
+            << "| verify | 12 | 8 | 8 | receiver-client | 0.124652 | 1807152 | 231216 | 1575936 |\n"
+            << "| bench | 12 | 8 | 8 | sender-server | 0.094229 | 230448 | 230448 | 0 |\n"
+            << "| bench | 12 | 8 | 8 | receiver-client | 0.094204 | 230448 | 230448 | 0 |\n"
+            << "| bench | 14 | 16 | 16 | sender-server | 0.401627 | 1019184 | 1019184 | 0 |\n"
+            << "| bench | 14 | 16 | 16 | receiver-client | 0.401663 | 1019184 | 1019184 | 0 |\n\n"
+            << "At `logN=12,t=8,m=8`, verify mode used 1,807,152 local socket bytes per role while bench mode used 230,448. The verification-only difference was 1,576,704 bytes per role, dominated by the `beta` and `senderOut` correctness traffic.\n\n"
             << "## Caveats\n\n"
             << "- This is a semi-honest correctness/API harness, not secure input generation.\n"
             << "- It uses real coproto sockets and libOTe `DefaultBaseOT`/`RegularPprf` network messages.\n"
@@ -747,7 +841,8 @@ namespace osuCrypto
     {
         std::cout << std::fixed << std::setprecision(6)
                   << "RMVOLE_PPRF_NET_SETUP"
-                  << " mode=local"
+                  << " mode=" << result.mode
+                  << " transport=local"
                   << " field=Fp64"
                   << " logN=" << params.logN
                   << " N=" << params.N
@@ -761,6 +856,8 @@ namespace osuCrypto
                   << " sender_bytes_sent=" << result.senderBytes
                   << " receiver_bytes_sent=" << result.receiverBytes
                   << " total_bytes=" << result.totalBytes
+                  << " harness_metadata_bytes=" << result.harnessMetadataBytes
+                  << " clean_protocol_bytes=" << result.cleanProtocolBytes
                   << " scalar_pprf_count_s=" << result.scalarPprfCountS
                   << " scalar_pprf_count_e=" << result.scalarPprfCountE
                   << " total_scalar_pprf_count=" << result.totalScalarPprfCount
@@ -776,29 +873,30 @@ namespace osuCrypto
     {
         if (argc >= 3 && std::string(argv[2]) == "local")
         {
-            if (argc != 6)
+            if (argc != 6 && argc != 7)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m>" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench]" << std::endl;
                 return 1;
             }
 
             auto logN = static_cast<u64>(std::stoull(argv[3]));
             auto t = static_cast<u64>(std::stoull(argv[4]));
             auto m = static_cast<u64>(std::stoull(argv[5]));
+            auto mode = argc == 7 ? rmvolePprfParseMode(argv[6]) : RmvolePprfSetupMode::Verify;
             auto params = rmvolePprfMakeParams(logN, t, m);
 
             rmvolePprfWriteDoc();
-            auto result = rmvolePprfRunLocalTyped<u64, CoeffCtxIntegerPrime_64>(params);
+            auto result = rmvolePprfRunLocalTyped<u64, CoeffCtxIntegerPrime_64>(params, mode);
             rmvolePprfPrintLocalRow(params, result);
             return result.ok ? 0 : 1;
         }
 
         if (argc >= 3 && (std::string(argv[2]) == "server" || std::string(argv[2]) == "client"))
         {
-            if (argc != 9)
+            if (argc != 9 && argc != 10)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps>\n"
-                          << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps>" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench]\n"
+                          << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench]" << std::endl;
                 return 1;
             }
 
@@ -809,21 +907,22 @@ namespace osuCrypto
             auto t = static_cast<u64>(std::stoull(argv[6]));
             auto m = static_cast<u64>(std::stoull(argv[7]));
             auto reps = static_cast<u64>(std::stoull(argv[8]));
+            auto mode = argc == 10 ? rmvolePprfParseMode(argv[9]) : RmvolePprfSetupMode::Verify;
             if (!reps)
                 throw std::runtime_error("RMVOLE_PPRF_NET_SETUP TCP mode requires reps > 0.");
 
             auto params = rmvolePprfMakeParams(logN, t, m);
             rmvolePprfWriteDoc();
             auto row = rmvolePprfRunTcpRoleTyped<u64, CoeffCtxIntegerPrime_64>(
-                server, host, port, params, reps);
+                server, host, port, params, reps, mode);
             rmvolePprfPrintTcpRow(row);
             rmvolePprfAppendTcpCsv(row);
             return row.ok ? 0 : 1;
         }
 
-        std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m>\n"
-                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps>\n"
-                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps>" << std::endl;
+        std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench]\n"
+                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench]\n"
+                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench]" << std::endl;
         return 1;
     }
 }
