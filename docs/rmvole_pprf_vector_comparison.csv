@@ -1,0 +1,5 @@
+network,mode,logN,N,t,m,reps,role,scalar_total_s,vector_total_s,speedup_scalar_over_vector,scalar_clean_bytes,vector_clean_bytes,byte_reduction_scalar_over_vector,scalar_total_pprf_instances,vector_total_pprf_instances,scalar_default_base_ot_calls,vector_default_base_ot_calls,notes
+tcp-loopback,bench,12,4096,8,8,3,sender-server,0.0776531600277,0.0112267320219,6.916812,230448,39600,5.819394,16,2,16,2,vector-fixed-prime uses one vector RegularPprf for s and one for e
+tcp-loopback,bench,12,4096,8,8,3,receiver-client,0.0776517839986,0.0111679600377,6.953086,230448,39600,5.819394,16,2,16,2,vector-fixed-prime uses one vector RegularPprf for s and one for e
+tcp-loopback,bench,14,16384,16,16,3,sender-server,0.324359316,0.0242196250183,13.392420,1019184,109824,9.279538,32,2,32,2,vector-fixed-prime uses one vector RegularPprf for s and one for e
+tcp-loopback,bench,14,16384,16,16,3,receiver-client,0.324513644999,0.0241817210335,13.419795,1019184,109824,9.279538,32,2,32,2,vector-fixed-prime uses one vector RegularPprf for s and one for e

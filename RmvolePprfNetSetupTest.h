@@ -9,7 +9,9 @@
 #include "libOTe/Base/BaseOT.h"
 #include "libOTe/Tools/Pprf/RegularPprf.h"
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -17,6 +19,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 #include <omp.h>
 
@@ -28,9 +31,22 @@ namespace osuCrypto
         Bench
     };
 
+    enum class RmvolePprfImplementation
+    {
+        Scalar,
+        Vector
+    };
+
     inline std::string rmvolePprfModeName(RmvolePprfSetupMode mode)
     {
         return mode == RmvolePprfSetupMode::Bench ? "bench" : "verify";
+    }
+
+    inline std::string rmvolePprfImplementationName(RmvolePprfImplementation implementation)
+    {
+        return implementation == RmvolePprfImplementation::Vector
+            ? "vector-fixed-prime"
+            : "batched-regular-block";
     }
 
     inline RmvolePprfSetupMode rmvolePprfParseMode(const std::string& value)
@@ -40,6 +56,15 @@ namespace osuCrypto
         if (value == "bench")
             return RmvolePprfSetupMode::Bench;
         throw std::runtime_error("RMVOLE_PPRF_NET_SETUP mode must be verify or bench.");
+    }
+
+    inline RmvolePprfImplementation rmvolePprfParseImplementation(const std::string& value)
+    {
+        if (value == "scalar" || value == "batched" || value == "batched-regular" || value == "batched-regular-block")
+            return RmvolePprfImplementation::Scalar;
+        if (value == "vector" || value == "vector-fixed-prime")
+            return RmvolePprfImplementation::Vector;
+        throw std::runtime_error("RMVOLE_PPRF_NET_SETUP implementation must be scalar or vector.");
     }
 
     struct RmvolePprfNetSetupParams
@@ -113,6 +138,111 @@ namespace osuCrypto
     {
         std::vector<F> values;
         std::vector<u64> offsets;
+    };
+
+    template<u64 M>
+    struct CoeffCtxPrimeArray64 : CoeffCtxIntegerPrime_64
+    {
+        using Base = CoeffCtxIntegerPrime_64;
+        using F = std::array<u64, M>;
+
+        using Base::byteSize;
+        using Base::copy;
+        using Base::deserialize;
+        using Base::isField;
+        using Base::mulConst;
+        using Base::one;
+        using Base::powerOfTwo;
+        using Base::resize;
+        using Base::restrictPtr;
+        using Base::serialize;
+        using Base::zero;
+
+        template<typename T>
+        using Vec = AlignedUnVector<T>;
+
+        OC_FORCEINLINE u64 prime() const
+        {
+            return Base::PR;
+        }
+
+        OC_FORCEINLINE void plus(F& ret, const F& lhs, const F& rhs)
+        {
+            for (u64 i = 0; i < M; ++i)
+                plus(ret[i], lhs[i], rhs[i]);
+        }
+
+        OC_FORCEINLINE void plus(u64& ret, const u64& lhs, const u64& rhs)
+        {
+            auto sum = lhs + rhs;
+            ret = sum >= Base::PR ? sum - Base::PR : sum;
+        }
+
+        OC_FORCEINLINE void minus(F& ret, const F& lhs, const F& rhs)
+        {
+            for (u64 i = 0; i < M; ++i)
+                minus(ret[i], lhs[i], rhs[i]);
+        }
+
+        OC_FORCEINLINE void minus(u64& ret, const u64& lhs, const u64& rhs)
+        {
+            ret = lhs >= rhs ? lhs - rhs : lhs + Base::PR - rhs;
+        }
+
+        OC_FORCEINLINE void mul(F& ret, const F& lhs, const u64& rhs)
+        {
+            for (u64 i = 0; i < M; ++i)
+                mul(ret[i], lhs[i], rhs);
+        }
+
+        OC_FORCEINLINE void mul(u64& ret, const u64& lhs, const u64& rhs)
+        {
+            ret = static_cast<u64>((static_cast<unsigned __int128>(lhs) * static_cast<unsigned __int128>(rhs)) % Base::PR);
+        }
+
+        OC_FORCEINLINE bool eq(const F& lhs, const F& rhs)
+        {
+            for (u64 i = 0; i < M; ++i)
+            {
+                if (!eq(lhs[i], rhs[i]))
+                    return false;
+            }
+            return true;
+        }
+
+        OC_FORCEINLINE bool eq(const u64& lhs, const u64& rhs)
+        {
+            return (lhs % Base::PR) == (rhs % Base::PR);
+        }
+
+        OC_FORCEINLINE void fromBlock(F& ret, const block& b)
+        {
+            std::array<block, M> buffer;
+            mAesFixedKey.ecbEncCounterMode(b, buffer);
+            for (u64 i = 0; i < M; ++i)
+                fromBlock(ret[i], buffer[i]);
+        }
+
+        OC_FORCEINLINE void fromBlock(u64& ret, const block& b)
+        {
+            std::memcpy(&ret, &b, sizeof(ret));
+            ret %= Base::PR;
+        }
+
+        std::string str(const F& f)
+        {
+            std::stringstream ss;
+            auto delim = "{ ";
+            for (u64 i = 0; i < M; ++i)
+                ss << std::exchange(delim, ", ") << f[i];
+            ss << " }";
+            return ss.str();
+        }
+
+        std::string str(const u64& value)
+        {
+            return std::to_string(value % Base::PR);
+        }
     };
 
     inline u64 rmvolePprfPow2(u64 logN)
@@ -199,7 +329,9 @@ namespace osuCrypto
         F v = value;
         if (ctx.eq(v, zero))
             return zero;
-        return static_cast<F>(ctx.prime() - v);
+        F neg{};
+        ctx.minus(neg, zero, v);
+        return neg;
     }
 
     template<typename F, typename Ctx>
@@ -291,13 +423,103 @@ namespace osuCrypto
         return true;
     }
 
+    template<u64 M>
+    using RmvolePprfPrimeVector = std::array<u64, M>;
+
+    template<u64 M>
+    RmvolePprfPrimeVector<M> rmvolePprfSampleDeltaVector(
+        const RmvolePprfNetSetupParams& params,
+        PRNG& prng,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        if (params.m != M)
+            throw std::runtime_error("RMVOLE_PPRF_NET_SETUP vector dispatch used the wrong compile-time m.");
+
+        RmvolePprfPrimeVector<M> delta{};
+        for (u64 h = 0; h < M; ++h)
+            rmvolePprfSampleNonzero(delta[h], prng, scalarCtx);
+        return delta;
+    }
+
+    template<u64 M>
+    typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>> rmvolePprfBuildVectorBeta(
+        const RmvolePprfNetSetupParams& params,
+        const RmvolePprfPrimeVector<M>& delta,
+        const RmvolePprfSparseInput<u64>& input,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        typename CoeffCtxPrimeArray64<M>::template Vec<VectorF> beta;
+        vectorCtx.resize(beta, params.t);
+
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            for (u64 h = 0; h < M; ++h)
+                scalarCtx.mul(beta[i][h], delta[h], input.values[i]);
+        }
+
+        return beta;
+    }
+
+    template<u64 M>
+    bool rmvolePprfVerifyVector(
+        const RmvolePprfNetSetupParams& params,
+        const RmvolePprfSparseInput<u64>& input,
+        const typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>>& beta,
+        const typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>>& senderOut,
+        const typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>>& receiverOut,
+        const std::string& label,
+        CoeffCtxPrimeArray64<M>& vectorCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            for (u64 leaf = 0; leaf < params.blockSize; ++leaf)
+            {
+                auto idx = i * params.blockSize + leaf;
+                VectorF reconstructed;
+                vectorCtx.plus(reconstructed, rmvolePprfNeg(senderOut[idx], vectorCtx), receiverOut[idx]);
+
+                VectorF expected{};
+                if (leaf == input.offsets[i])
+                    vectorCtx.copy(expected, beta[i]);
+
+                if (!vectorCtx.eq(reconstructed, expected))
+                {
+                    u64 badCoord = 0;
+                    for (; badCoord < M; ++badCoord)
+                    {
+                        if (!vectorCtx.eq(reconstructed[badCoord], expected[badCoord]))
+                            break;
+                    }
+
+                    std::cout << "RMVOLE_PPRF_NET_SETUP FAIL"
+                              << " vector=" << label
+                              << " h=" << badCoord
+                              << " block=" << i
+                              << " leaf=" << leaf
+                              << " offset=" << input.offsets[i]
+                              << " reconstructed=" << vectorCtx.str(reconstructed)
+                              << " expected=" << vectorCtx.str(expected)
+                              << std::endl;
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     inline void rmvolePprfFillCounters(
         const RmvolePprfNetSetupParams& params,
-        RmvolePprfNetSetupResult& result)
+        RmvolePprfNetSetupResult& result,
+        RmvolePprfImplementation implementation = RmvolePprfImplementation::Scalar)
     {
-        result.scalarPprfCountS = params.m;
-        result.scalarPprfCountE = params.m;
-        result.totalScalarPprfCount = 2 * params.m;
+        result.scalarPprfCountS = implementation == RmvolePprfImplementation::Vector ? 1 : params.m;
+        result.scalarPprfCountE = implementation == RmvolePprfImplementation::Vector ? 1 : params.m;
+        result.totalScalarPprfCount = result.scalarPprfCountS + result.scalarPprfCountE;
         result.defaultBaseOtCalls = result.totalScalarPprfCount;
         result.expandedLeavesPerCoordinatePerSparseVector = params.N;
         result.totalScalarExpandedLeaves = 2 * params.m * params.N;
@@ -307,11 +529,12 @@ namespace osuCrypto
 
     inline void rmvolePprfFillTcpCounters(
         const RmvolePprfNetSetupParams& params,
-        RmvolePprfTcpSetupRow& row)
+        RmvolePprfTcpSetupRow& row,
+        RmvolePprfImplementation implementation = RmvolePprfImplementation::Scalar)
     {
-        row.scalarPprfCountS = params.m;
-        row.scalarPprfCountE = params.m;
-        row.totalScalarPprfCount = 2 * params.m;
+        row.scalarPprfCountS = implementation == RmvolePprfImplementation::Vector ? 1 : params.m;
+        row.scalarPprfCountE = implementation == RmvolePprfImplementation::Vector ? 1 : params.m;
+        row.totalScalarPprfCount = row.scalarPprfCountS + row.scalarPprfCountE;
         row.defaultBaseOtCalls = row.totalScalarPprfCount;
         row.expandedLeavesPerCoordinatePerSparseVector = params.N;
         row.totalScalarExpandedLeaves = 2 * params.m * params.N;
@@ -443,6 +666,147 @@ namespace osuCrypto
         return result;
     }
 
+    template<u64 M>
+    bool rmvolePprfRunLocalVectorSparseVector(
+        const RmvolePprfNetSetupParams& params,
+        const RmvolePprfPrimeVector<M>& delta,
+        const RmvolePprfSparseInput<u64>& input,
+        const std::string& label,
+        cp::Socket& senderSocket,
+        cp::Socket& receiverSocket,
+        double& setupSeconds,
+        double& verifySeconds,
+        RmvolePprfSetupMode mode,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+
+        RegularPprfSender<VectorF, VectorF, CoeffCtxPrimeArray64<M>> sender;
+        RegularPprfReceiver<VectorF, VectorF, CoeffCtxPrimeArray64<M>> receiver;
+        VecF senderOut, receiverOut;
+
+        auto start = omp_get_wtime();
+        sender.configure(params.blockSize, params.t);
+        receiver.configure(params.blockSize, params.t);
+
+        auto choices = rmvolePprfChoiceBitsFromOffsets(input.offsets, receiver.mDepth);
+        receiver.setChoiceBits(choices);
+        auto beta = rmvolePprfBuildVectorBeta<M>(params, delta, input, vectorCtx, scalarCtx);
+
+        std::vector<std::array<block, 2>> senderBaseOts(sender.baseOtCount());
+        std::vector<block> receiverBaseOts(receiver.baseOtCount());
+
+#ifdef LIBOTE_HAS_BASE_OT
+        DefaultBaseOT senderBaseOt;
+        DefaultBaseOT receiverBaseOt;
+        PRNG senderPrng(prng.get<block>() ^ block(M, label == "s" ? 0xB451 : 0xE451));
+        PRNG receiverPrng(prng.get<block>() ^ block(M, label == "s" ? 0xB452 : 0xE452));
+
+        auto sendBase = senderBaseOt.send(senderBaseOts, senderPrng, senderSocket);
+        auto recvBase = receiverBaseOt.receive(choices, receiverBaseOts, receiverPrng, receiverSocket);
+        macoro::sync_wait(macoro::when_all_ready(std::move(sendBase), std::move(recvBase)));
+#else
+        throw std::runtime_error("RMVOLE_PPRF_NET_SETUP requires libOTe base OT support.");
+#endif
+
+        sender.setBase(senderBaseOts);
+        receiver.setBase(receiverBaseOts);
+        vectorCtx.resize(senderOut, params.N);
+        vectorCtx.resize(receiverOut, params.N);
+
+        auto sendPprf = sender.expand(
+            senderSocket,
+            beta,
+            prng.get<block>() ^ block(M, label == "s" ? 0x5EED : 0xEED),
+            senderOut,
+            PprfOutputFormat::ByTreeIndex,
+            true,
+            1,
+            vectorCtx);
+        auto recvPprf = receiver.expand(
+            receiverSocket,
+            receiverOut,
+            PprfOutputFormat::ByTreeIndex,
+            true,
+            1,
+            vectorCtx);
+        macoro::sync_wait(macoro::when_all_ready(std::move(sendPprf), std::move(recvPprf)));
+        setupSeconds += omp_get_wtime() - start;
+
+        if (mode == RmvolePprfSetupMode::Verify)
+        {
+            auto verifyStart = omp_get_wtime();
+            auto ok = rmvolePprfVerifyVector<M>(params, input, beta, senderOut, receiverOut, label, vectorCtx);
+            verifySeconds += omp_get_wtime() - verifyStart;
+            if (!ok)
+                return false;
+        }
+
+        return true;
+    }
+
+    template<u64 M>
+    RmvolePprfNetSetupResult rmvolePprfRunLocalVectorTyped(
+        const RmvolePprfNetSetupParams& params,
+        RmvolePprfSetupMode mode)
+    {
+        RmvolePprfNetSetupResult result;
+        rmvolePprfFillCounters(params, result, RmvolePprfImplementation::Vector);
+        result.mode = rmvolePprfModeName(mode);
+        result.implementationMode = rmvolePprfImplementationName(RmvolePprfImplementation::Vector);
+        result.notes = mode == RmvolePprfSetupMode::Verify
+            ? "local_async_socket; verify; vector_fixed_prime; one_vector_RegularPprf_per_sparse_vector; DefaultBaseOT repeated per vector RegularPprf instance; s_and_e; centralized_offsets_delta_s_e"
+            : "local_async_socket; bench; vector_fixed_prime; one_vector_RegularPprf_per_sparse_vector; DefaultBaseOT repeated per vector RegularPprf instance; no_reconstruction_opening";
+
+        PRNG prng(sysRandomSeed());
+        CoeffCtxIntegerPrime_64 scalarCtx;
+        CoeffCtxPrimeArray64<M> vectorCtx;
+
+        auto delta = rmvolePprfSampleDeltaVector<M>(params, prng, scalarCtx);
+        auto sparseS = rmvolePprfSampleSparseInput<u64, CoeffCtxIntegerPrime_64>(params, prng, scalarCtx);
+        auto sparseE = rmvolePprfSampleSparseInput<u64, CoeffCtxIntegerPrime_64>(params, prng, scalarCtx);
+        auto sockets = cp::LocalAsyncSocket::makePair();
+
+        result.ok = rmvolePprfRunLocalVectorSparseVector<M>(
+            params, delta, sparseS, "s", sockets[0], sockets[1],
+            result.sSetupSeconds, result.verifySeconds, mode, prng, vectorCtx, scalarCtx);
+        if (result.ok)
+        {
+            result.ok = rmvolePprfRunLocalVectorSparseVector<M>(
+                params, delta, sparseE, "e", sockets[0], sockets[1],
+                result.eSetupSeconds, result.verifySeconds, mode, prng, vectorCtx, scalarCtx);
+        }
+
+        result.senderBytes = sockets[0].bytesSent();
+        result.receiverBytes = sockets[1].bytesSent();
+        result.totalBytes = result.senderBytes + result.receiverBytes;
+        result.cleanProtocolBytes = result.totalBytes;
+
+        return result;
+    }
+
+    inline RmvolePprfNetSetupResult rmvolePprfRunLocalVectorDispatched(
+        const RmvolePprfNetSetupParams& params,
+        RmvolePprfSetupMode mode)
+    {
+        switch (params.m)
+        {
+        case 8:
+            return rmvolePprfRunLocalVectorTyped<8>(params, mode);
+        case 16:
+            return rmvolePprfRunLocalVectorTyped<16>(params, mode);
+        case 32:
+            return rmvolePprfRunLocalVectorTyped<32>(params, mode);
+        case 64:
+            return rmvolePprfRunLocalVectorTyped<64>(params, mode);
+        default:
+            throw std::runtime_error("RMVOLE_PPRF_NET_SETUP vector mode supports m = 8, 16, 32, 64.");
+        }
+    }
+
     inline void rmvolePprfAppendTcpCsv(const RmvolePprfTcpSetupRow& row)
     {
         const auto path = std::filesystem::path("docs/rmvole_pprf_tcp_setup_clean.csv");
@@ -456,7 +820,7 @@ namespace osuCrypto
             out << "method,mode,implementation_mode,role,network,address,logN,N,t,m,blockSize,reps,"
                 << "median_s_setup_s,median_e_setup_s,median_total_setup_s,median_verify_s,"
                 << "bytes_sent_by_role,bytes_received_by_role,total_local_socket_bytes,harness_metadata_bytes,clean_protocol_bytes,"
-                << "scalar_pprf_instances_s,scalar_pprf_instances_e,total_scalar_pprf_instances,default_base_ot_calls,"
+                << "pprf_instances_s,pprf_instances_e,total_pprf_instances,default_base_ot_calls,"
                 << "expanded_leaves_per_coordinate_per_sparse_vector,total_scalar_expanded_leaves,"
                 << "total_scalar_expanded_leaves_over_2mN,ok,notes\n";
         }
@@ -645,6 +1009,240 @@ namespace osuCrypto
         return true;
     }
 
+    template<u64 M>
+    void rmvolePprfTcpServerVectorSparseVector(
+        const RmvolePprfNetSetupParams& params,
+        cp::Socket& socket,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        RmvolePprfSetupMode mode)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+
+        RegularPprfSender<VectorF, VectorF, CoeffCtxPrimeArray64<M>> sender;
+        sender.configure(params.blockSize, params.t);
+
+        VecF beta, senderOut;
+        vectorCtx.resize(beta, params.t);
+        if (mode == RmvolePprfSetupMode::Verify)
+        {
+            macoro::sync_wait(socket.recv(beta));
+        }
+        else
+        {
+            for (u64 i = 0; i < params.t; ++i)
+                vectorCtx.fromBlock(beta[i], prng.get<block>());
+        }
+
+        std::vector<std::array<block, 2>> senderBaseOts(sender.baseOtCount());
+#ifdef LIBOTE_HAS_BASE_OT
+        DefaultBaseOT senderBaseOt;
+        auto sendBase = senderBaseOt.send(senderBaseOts, prng, socket);
+        macoro::sync_wait(std::move(sendBase));
+#else
+        throw std::runtime_error("RMVOLE_PPRF_NET_SETUP requires libOTe base OT support.");
+#endif
+        sender.setBase(senderBaseOts);
+
+        vectorCtx.resize(senderOut, params.N);
+        auto sendPprf = sender.expand(
+            socket,
+            beta,
+            prng.get<block>(),
+            senderOut,
+            PprfOutputFormat::ByTreeIndex,
+            true,
+            1,
+            vectorCtx);
+        macoro::sync_wait(std::move(sendPprf));
+
+        if (mode == RmvolePprfSetupMode::Verify)
+            macoro::sync_wait(socket.send(coproto::copy(senderOut)));
+    }
+
+    template<u64 M>
+    bool rmvolePprfTcpClientVectorSparseVector(
+        const RmvolePprfNetSetupParams& params,
+        const RmvolePprfPrimeVector<M>& delta,
+        const RmvolePprfSparseInput<u64>& input,
+        const std::string& label,
+        cp::Socket& socket,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        CoeffCtxIntegerPrime_64& scalarCtx,
+        double& setupSeconds,
+        double& verifySeconds,
+        RmvolePprfSetupMode mode)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+
+        auto start = omp_get_wtime();
+        RegularPprfReceiver<VectorF, VectorF, CoeffCtxPrimeArray64<M>> receiver;
+        receiver.configure(params.blockSize, params.t);
+        auto choices = rmvolePprfChoiceBitsFromOffsets(input.offsets, receiver.mDepth);
+        receiver.setChoiceBits(choices);
+
+        auto beta = rmvolePprfBuildVectorBeta<M>(params, delta, input, vectorCtx, scalarCtx);
+        if (mode == RmvolePprfSetupMode::Verify)
+            macoro::sync_wait(socket.send(coproto::copy(beta)));
+
+        std::vector<block> receiverBaseOts(receiver.baseOtCount());
+#ifdef LIBOTE_HAS_BASE_OT
+        DefaultBaseOT receiverBaseOt;
+        auto recvBase = receiverBaseOt.receive(choices, receiverBaseOts, prng, socket);
+        macoro::sync_wait(std::move(recvBase));
+#else
+        throw std::runtime_error("RMVOLE_PPRF_NET_SETUP requires libOTe base OT support.");
+#endif
+        receiver.setBase(receiverBaseOts);
+
+        VecF receiverOut, senderOut;
+        vectorCtx.resize(receiverOut, params.N);
+        if (mode == RmvolePprfSetupMode::Verify)
+            vectorCtx.resize(senderOut, params.N);
+
+        auto recvPprf = receiver.expand(
+            socket,
+            receiverOut,
+            PprfOutputFormat::ByTreeIndex,
+            true,
+            1,
+            vectorCtx);
+        macoro::sync_wait(std::move(recvPprf));
+        setupSeconds += omp_get_wtime() - start;
+
+        if (mode == RmvolePprfSetupMode::Bench)
+            return true;
+
+        macoro::sync_wait(socket.recv(senderOut));
+
+        auto verifyStart = omp_get_wtime();
+        auto ok = rmvolePprfVerifyVector<M>(params, input, beta, senderOut, receiverOut, label, vectorCtx);
+        verifySeconds += omp_get_wtime() - verifyStart;
+        return ok;
+    }
+
+    template<u64 M>
+    RmvolePprfTcpSetupRow rmvolePprfRunTcpVectorRoleTyped(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        const RmvolePprfNetSetupParams& params,
+        u64 reps,
+        RmvolePprfSetupMode mode)
+    {
+        auto address = host + ":" + port;
+        auto socket = cp::asioConnect(address, server);
+        PRNG prng(sysRandomSeed());
+        CoeffCtxIntegerPrime_64 scalarCtx;
+        CoeffCtxPrimeArray64<M> vectorCtx;
+        std::vector<double> sTimes, eTimes, totalTimes, verifyTimes;
+
+        RmvolePprfTcpSetupRow row;
+        row.mode = rmvolePprfModeName(mode);
+        row.implementationMode = rmvolePprfImplementationName(RmvolePprfImplementation::Vector);
+        row.role = server ? "sender-server" : "receiver-client";
+        row.network = rmvolePprfTcpNetworkLabel(host);
+        row.address = address;
+        row.logN = params.logN;
+        row.N = params.N;
+        row.t = params.t;
+        row.m = params.m;
+        row.blockSize = params.blockSize;
+        row.reps = reps;
+        rmvolePprfFillTcpCounters(params, row, RmvolePprfImplementation::Vector);
+        row.notes = mode == RmvolePprfSetupMode::Verify
+            ? (server
+                ? "tcp_two_process; verify; server_runs_vector_RegularPprfSender; receives_vector_beta; sends_vector_sender_output_for_opening; DefaultBaseOT_repeated_per_vector_RegularPprf"
+                : "tcp_two_process; verify; client_generates_centralized_test_inputs; verifies_s_and_e_vector; DefaultBaseOT_repeated_per_vector_RegularPprf")
+            : (server
+                ? "tcp_two_process; bench; server_runs_vector_RegularPprfSender; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_vector_RegularPprf"
+                : "tcp_two_process; bench; receiver_choices_local; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_vector_RegularPprf");
+        row.ok = true;
+
+        for (u64 rep = 0; rep < reps; ++rep)
+        {
+            double sSetup = 0;
+            double eSetup = 0;
+            double verify = 0;
+
+            if (server)
+            {
+                auto start = omp_get_wtime();
+                rmvolePprfTcpServerVectorSparseVector<M>(params, socket, prng, vectorCtx, mode);
+                sSetup = omp_get_wtime() - start;
+
+                start = omp_get_wtime();
+                rmvolePprfTcpServerVectorSparseVector<M>(params, socket, prng, vectorCtx, mode);
+                eSetup = omp_get_wtime() - start;
+            }
+            else
+            {
+                auto delta = rmvolePprfSampleDeltaVector<M>(params, prng, scalarCtx);
+                auto sparseS = rmvolePprfSampleSparseInput<u64, CoeffCtxIntegerPrime_64>(params, prng, scalarCtx);
+                auto sparseE = rmvolePprfSampleSparseInput<u64, CoeffCtxIntegerPrime_64>(params, prng, scalarCtx);
+
+                row.ok = rmvolePprfTcpClientVectorSparseVector<M>(
+                    params, delta, sparseS, "s", socket, prng, vectorCtx, scalarCtx, sSetup, verify, mode);
+                if (row.ok)
+                {
+                    row.ok = rmvolePprfTcpClientVectorSparseVector<M>(
+                        params, delta, sparseE, "e", socket, prng, vectorCtx, scalarCtx, eSetup, verify, mode);
+                }
+            }
+
+            sTimes.push_back(sSetup);
+            eTimes.push_back(eSetup);
+            totalTimes.push_back(sSetup + eSetup);
+            verifyTimes.push_back(verify);
+
+            if (!row.ok)
+                break;
+        }
+
+        macoro::sync_wait(socket.flush());
+
+        row.medianSSetupSeconds = rmvolePprfMedian(sTimes);
+        row.medianESetupSeconds = rmvolePprfMedian(eTimes);
+        row.medianTotalSetupSeconds = rmvolePprfMedian(totalTimes);
+        row.medianVerifySeconds = rmvolePprfMedian(verifyTimes);
+        row.bytesSentByRole = socket.bytesSent();
+        row.bytesReceivedByRole = socket.bytesReceived();
+        row.totalLocalSocketBytes = row.bytesSentByRole + row.bytesReceivedByRole;
+        row.harnessMetadataBytes = mode == RmvolePprfSetupMode::Verify
+            ? 2 * reps * (params.t + params.N) * static_cast<u64>(sizeof(RmvolePprfPrimeVector<M>))
+            : 0;
+        row.cleanProtocolBytes = row.totalLocalSocketBytes >= row.harnessMetadataBytes
+            ? row.totalLocalSocketBytes - row.harnessMetadataBytes
+            : 0;
+        return row;
+    }
+
+    inline RmvolePprfTcpSetupRow rmvolePprfRunTcpVectorRoleDispatched(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        const RmvolePprfNetSetupParams& params,
+        u64 reps,
+        RmvolePprfSetupMode mode)
+    {
+        switch (params.m)
+        {
+        case 8:
+            return rmvolePprfRunTcpVectorRoleTyped<8>(server, host, port, params, reps, mode);
+        case 16:
+            return rmvolePprfRunTcpVectorRoleTyped<16>(server, host, port, params, reps, mode);
+        case 32:
+            return rmvolePprfRunTcpVectorRoleTyped<32>(server, host, port, params, reps, mode);
+        case 64:
+            return rmvolePprfRunTcpVectorRoleTyped<64>(server, host, port, params, reps, mode);
+        default:
+            throw std::runtime_error("RMVOLE_PPRF_NET_SETUP vector mode supports m = 8, 16, 32, 64.");
+        }
+    }
+
     template<typename F, typename Ctx>
     RmvolePprfTcpSetupRow rmvolePprfRunTcpRoleTyped(
         bool server,
@@ -761,12 +1359,12 @@ namespace osuCrypto
                   << " total_bytes=" << row.totalLocalSocketBytes
                   << " harness_metadata_bytes=" << row.harnessMetadataBytes
                   << " clean_protocol_bytes=" << row.cleanProtocolBytes
-                  << " scalar_pprf_instances_s=" << row.scalarPprfCountS
-                  << " scalar_pprf_instances_e=" << row.scalarPprfCountE
-                  << " total_scalar_pprf_instances=" << row.totalScalarPprfCount
+                  << " pprf_instances_s=" << row.scalarPprfCountS
+                  << " pprf_instances_e=" << row.scalarPprfCountE
+                  << " total_pprf_instances=" << row.totalScalarPprfCount
                   << " default_base_ot_calls=" << row.defaultBaseOtCalls
+                  << " expanded_leaves=" << row.totalScalarExpandedLeaves
                   << " expanded_leaves_per_coordinate_per_sparse_vector=" << row.expandedLeavesPerCoordinatePerSparseVector
-                  << " total_scalar_expanded_leaves=" << row.totalScalarExpandedLeaves
                   << " total_scalar_expanded_leaves_over_2mN=" << row.totalScalarExpandedLeavesOver2MN
                   << " notes=" << row.notes
                   << " " << (row.ok ? "PASS" : "FAIL")
@@ -781,29 +1379,31 @@ namespace osuCrypto
             << "Phase 6E adds `RmvolePprfNetSetupTest.h` and CLI flag `--RMVOLE_PPRF_NET_SETUP`.\n\n"
             << "## Modes\n\n"
             << "```bash\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [batched|batched-regular]\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [scalar|vector]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [scalar|vector]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [scalar|vector]\n"
             << "```\n\n"
-            << "The optional mode defaults to `verify` for backward compatibility. `verify` opens shares for correctness. `bench` runs only `DefaultBaseOT` plus `RegularPprf` setup and does not exchange correctness-opening data.\n\n"
+            << "The optional correctness mode defaults to `verify` for backward compatibility. `verify` opens shares for correctness. `bench` runs only `DefaultBaseOT` plus `RegularPprf` setup and does not exchange correctness-opening data. The optional implementation mode defaults to `scalar`, which is the Phase 6E-4 coordinate-wise path. `vector` selects the Phase 6E-6 fixed-size vector payload path.\n\n"
             << "Example TCP loopback run:\n\n"
             << "```bash\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12220 12 8 8 3 verify\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12220 12 8 8 3 verify\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12221 12 8 8 3 bench\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12221 12 8 8 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12250 12 8 8 3 bench vector\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12250 12 8 8 3 bench vector\n"
             << "```\n\n"
             << "## API Used\n\n"
             << "- libOTe API: `RegularPprfSender<F,F,Ctx>` and `RegularPprfReceiver<F,F,Ctx>` from `libOTe/Tools/Pprf/RegularPprf.h`.\n"
-            << "- Field instantiation: `F = u64`, `Ctx = CoeffCtxIntegerPrime_64`.\n"
+            << "- Scalar field instantiation: `F = u64`, `Ctx = CoeffCtxIntegerPrime_64`.\n"
+            << "- Vector field instantiation: `F = std::array<u64, M>`, `Ctx = CoeffCtxPrimeArray64<M>` for `M in {8,16,32,64}`. The context implements coordinate-wise arithmetic modulo `2^61 - 1`, not native integer arithmetic.\n"
             << "- Local channel: `coproto::LocalAsyncSocket::makePair()`.\n"
             << "- TCP channel: `coproto::asioConnect(address, server)`, with server running `RegularPprfSender` and client running `RegularPprfReceiver`.\n"
-            << "- Base OT: `DefaultBaseOT::send()` and `DefaultBaseOT::receive()` are run before every scalar RegularPprf instance.\n"
+            << "- Base OT: `DefaultBaseOT::send()` and `DefaultBaseOT::receive()` are run before every RegularPprf instance.\n"
             << "- PPRF expansion: sender calls `expand(socket, beta, seed, senderOut, PprfOutputFormat::ByTreeIndex, true, 1, ctx)` and receiver calls `expand(socket, receiverOut, PprfOutputFormat::ByTreeIndex, true, 1, ctx)`.\n\n"
             << "## Phase 6E-4 Batching Audit\n\n"
             << "`RegularPprf` is already a multi-point regular PPRF API. `configure(domainSize, pointCount)` sets the leaf domain for each tree and the number of punctured trees. `baseOtCount()` returns `log2(domainSize) * pointCount`, and `expand()` outputs `domainSize * pointCount` leaves in `ByTreeIndex` format.\n\n"
             << "The correct regular-block model for RM-VOLE setup is `domainSize = blockSize = N/t` and `pointCount = t`: one tree per regular block, one puncture per tree, and total output `t * blockSize = N` leaves per coordinate per sparse vector. A single `RegularPprf` configured as `domainSize = N, pointCount = t` would output `t*N` leaves and would not match the desired one-puncture-per-block layout without extra projection, so it is not the right model.\n\n"
-            << "The current implementation mode is therefore `batched-regular-block`: one batched scalar `RegularPprf` for each coordinate of `s`, and one for each coordinate of `e`. This means `scalar_pprf_instances_s = m`, `scalar_pprf_instances_e = m`, and `total_scalar_pprf_instances = 2*m`. Since the harness still calls `DefaultBaseOT` once per batched `RegularPprf` instance, `default_base_ot_calls = 2*m` per role. The API clears base OT state after expansion, so this phase does not attempt to reuse the same base OT material across multiple `RegularPprf` instances.\n\n"
+            << "The scalar implementation mode is therefore `batched-regular-block`: one batched scalar `RegularPprf` for each coordinate of `s`, and one for each coordinate of `e`. This means `pprf_instances_s = m`, `pprf_instances_e = m`, and `total_pprf_instances = 2*m`. Since the harness still calls `DefaultBaseOT` once per batched `RegularPprf` instance, `default_base_ot_calls = 2*m` per role. The API clears base OT state after expansion, so this phase does not attempt to reuse the same base OT material across multiple `RegularPprf` instances.\n\n"
+            << "## Phase 6E-6 Vector Mode\n\n"
+            << "`implementation_mode=vector-fixed-prime` instantiates `RegularPprf` with fixed-size vector leaves, `F = std::array<u64, M>`, and a project-local `CoeffCtxPrimeArray64<M>`. The context supplies the operations required by `RegularPprf`: coordinate-wise `plus`, `minus`, `mul` by scalar where needed, `fromBlock`, `serialize`, `deserialize`, `copy`, `zero`, and equality. Every coordinate is reduced modulo the same `Fp64` prime used by the scalar RM-VOLE prototype.\n\n"
+            << "Vector mode keeps the same regular-block shape, `domainSize = blockSize` and `pointCount = t`, but pays for one vector-valued `RegularPprf` for `s` and one for `e`. Therefore `pprf_instances_s = 1`, `pprf_instances_e = 1`, `total_pprf_instances = 2`, and `default_base_ot_calls = 2`. The expanded scalar-coordinate count remains `2*m*N`.\n\n"
             << "## Relation Tested\n\n"
             << "For `N = 2^logN`, `blockSize = N/t`, and each block `i`, the harness centrally samples sparse offsets and nonzero scalars for both `s` and `e`, plus extension-coordinate scalars `Delta_h`. It programs two sparse vectors:\n\n"
             << "```text\n"
@@ -816,38 +1416,42 @@ namespace osuCrypto
             << "share1_h[j] =  receiverOut_h[j]\n"
             << "share0_h[j] + share1_h[j] = betaS or betaE at its support, else 0\n"
             << "```\n\n"
-            << "In `verify` mode, local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP verify mode has the client centrally generate correctness-test inputs and send each scalar `beta` vector to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.\n\n"
-            << "In `bench` mode, the sender locally samples the programmed scalar payloads and the receiver locally samples its regular-block choices. The parties still run real `DefaultBaseOT` and `RegularPprf` over the selected socket, but they do not send `beta`, `senderOut`, or reconstruction-opening data.\n\n"
+            << "In `verify` mode, local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP verify mode has the client centrally generate correctness-test inputs and send each `beta` payload to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.\n\n"
+            << "In `bench` mode, the sender locally samples the programmed payloads and the receiver locally samples its regular-block choices. The parties still run real `DefaultBaseOT` and `RegularPprf` over the selected socket, but they do not send `beta`, `senderOut`, or reconstruction-opening data.\n\n"
             << "## Counters And Bytes\n\n"
-            << "`scalar_pprf_instances_s = m`, `scalar_pprf_instances_e = m`, `total_scalar_pprf_instances = 2*m`, `default_base_ot_calls = 2*m`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup_clean.csv`.\n\n"
-            << "`bench` socket counters are the clean protocol measurement for this harness: `DefaultBaseOT` plus `RegularPprf` only. `verify` socket counters include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client). The `harness_metadata_bytes` column is a payload-size estimate for those correctness messages; message framing can make `verify - bench` slightly larger. The repeated `DefaultBaseOT` per scalar PPRF is a likely overestimate and a future batching/reuse target.\n\n"
-            << "## Phase 6E-4 TCP Smoke Results\n\n"
+            << "Scalar mode has `pprf_instances_s = m`, `pprf_instances_e = m`, `total_pprf_instances = 2*m`, and `default_base_ot_calls = 2*m`. Vector mode has `pprf_instances_s = 1`, `pprf_instances_e = 1`, `total_pprf_instances = 2`, and `default_base_ot_calls = 2`. Both modes report `expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup_clean.csv`.\n\n"
+            << "`bench` socket counters are the clean protocol measurement for this harness: `DefaultBaseOT` plus `RegularPprf` only. `verify` socket counters include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client). The `harness_metadata_bytes` column is a payload-size estimate for those correctness messages; message framing can make `verify - bench` slightly larger.\n\n"
+            << "## Phase 6E-6 TCP Comparison Results\n\n"
             << "Commands tested on one host:\n\n"
             << "```bash\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12242 12 8 8 3 verify\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12242 12 8 8 3 verify\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12240 12 8 8 3 bench\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12240 12 8 8 3 bench\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12241 14 16 16 3 bench\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12241 14 16 16 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12250 12 8 8 3 bench vector\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12250 12 8 8 3 bench vector\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12251 14 16 16 3 bench vector\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12251 14 16 16 3 bench vector\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12252 12 8 8 3 bench scalar\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12252 12 8 8 3 bench scalar\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12253 14 16 16 3 bench scalar\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12253 14 16 16 3 bench scalar\n"
             << "```\n\n"
-            << "| mode | logN | t | m | role | median total setup s | local socket bytes | clean protocol bytes | harness metadata bytes |\n"
+            << "| impl | logN | t | m | role | total setup s | clean protocol bytes | total PPRFs | DefaultBaseOT calls |\n"
             << "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
-            << "| verify | 12 | 8 | 8 | sender-server | 0.079683 | 1807152 | 231216 | 1575936 |\n"
-            << "| verify | 12 | 8 | 8 | receiver-client | 0.079687 | 1807152 | 231216 | 1575936 |\n"
-            << "| bench | 12 | 8 | 8 | sender-server | 0.077437 | 230448 | 230448 | 0 |\n"
-            << "| bench | 12 | 8 | 8 | receiver-client | 0.077430 | 230448 | 230448 | 0 |\n"
-            << "| bench | 14 | 16 | 16 | sender-server | 0.329987 | 1019184 | 1019184 | 0 |\n"
-            << "| bench | 14 | 16 | 16 | receiver-client | 0.330009 | 1019184 | 1019184 | 0 |\n\n"
-            << "At `logN=12,t=8,m=8`, verify mode used 1,807,152 local socket bytes per role while bench mode used 230,448. The verification-only difference was 1,576,704 bytes per role, dominated by the `beta` and `senderOut` correctness traffic.\n\n"
+            << "| vector | 12 | 8 | 8 | sender-server | 0.011227 | 39600 | 2 | 2 |\n"
+            << "| vector | 12 | 8 | 8 | receiver-client | 0.011168 | 39600 | 2 | 2 |\n"
+            << "| scalar | 12 | 8 | 8 | sender-server | 0.077653 | 230448 | 16 | 16 |\n"
+            << "| scalar | 12 | 8 | 8 | receiver-client | 0.077652 | 230448 | 16 | 16 |\n"
+            << "| vector | 14 | 16 | 16 | sender-server | 0.024220 | 109824 | 2 | 2 |\n"
+            << "| vector | 14 | 16 | 16 | receiver-client | 0.024182 | 109824 | 2 | 2 |\n"
+            << "| scalar | 14 | 16 | 16 | sender-server | 0.324359 | 1019184 | 32 | 32 |\n"
+            << "| scalar | 14 | 16 | 16 | receiver-client | 0.324514 | 1019184 | 32 | 32 |\n\n"
+            << "The vector mode keeps the vector correction payload proportional to `m`, but it removes repeated scalar tree/base-OT setup. At `logN=12,t=8,m=8`, clean TCP bytes dropped from 230,448 to 39,600. At `logN=14,t=16,m=16`, clean TCP bytes dropped from 1,019,184 to 109,824.\n\n"
             << "## Caveats\n\n"
             << "- This is a semi-honest correctness/API harness, not secure input generation.\n"
             << "- It uses real coproto sockets and libOTe `DefaultBaseOT`/`RegularPprf` network messages.\n"
             << "- It still uses centralized test input generation.\n"
-            << "- It runs `m` independent batched scalar RegularPprf instances for `s` and another `m` for `e`; it is not the final shared-path vector-valued PPRF.\n"
+            << "- Vector mode supports fixed compile-time `m = 8, 16, 32, 64`.\n"
             << "- It is setup only, not the full RM-VOLE expand path or LAN runtime for the whole construction.\n\n"
             << "## Next Step\n\n"
-            << "Batch or reuse base OT material across scalar PPRFs where valid, then replace the coordinate-wise adapter with a shared-path vector-valued PPRF so path/base material is paid once and only coordinate payloads scale with `m`.\n";
+            << "Connect the vector-valued setup harness to the full RM-VOLE setup state and define the honest network measurement boundary for setup plus local expand. The remaining security caveat is replacing centralized test input generation with real role-owned inputs.\n";
     }
 
     inline void rmvolePprfPrintLocalRow(
@@ -874,12 +1478,12 @@ namespace osuCrypto
                   << " total_bytes=" << result.totalBytes
                   << " harness_metadata_bytes=" << result.harnessMetadataBytes
                   << " clean_protocol_bytes=" << result.cleanProtocolBytes
-                  << " scalar_pprf_instances_s=" << result.scalarPprfCountS
-                  << " scalar_pprf_instances_e=" << result.scalarPprfCountE
-                  << " total_scalar_pprf_instances=" << result.totalScalarPprfCount
+                  << " pprf_instances_s=" << result.scalarPprfCountS
+                  << " pprf_instances_e=" << result.scalarPprfCountE
+                  << " total_pprf_instances=" << result.totalScalarPprfCount
                   << " default_base_ot_calls=" << result.defaultBaseOtCalls
+                  << " expanded_leaves=" << result.totalScalarExpandedLeaves
                   << " expanded_leaves_per_coordinate_per_sparse_vector=" << result.expandedLeavesPerCoordinatePerSparseVector
-                  << " total_scalar_expanded_leaves=" << result.totalScalarExpandedLeaves
                   << " total_scalar_expanded_leaves_over_2mN=" << result.totalScalarExpandedLeavesOver2MN
                   << " notes=" << result.notes
                   << " " << (result.ok ? "PASS" : "FAIL")
@@ -892,7 +1496,7 @@ namespace osuCrypto
         {
             if (argc != 6 && argc != 7 && argc != 8)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [batched|batched-regular]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [scalar|vector]" << std::endl;
                 return 1;
             }
 
@@ -900,12 +1504,15 @@ namespace osuCrypto
             auto t = static_cast<u64>(std::stoull(argv[4]));
             auto m = static_cast<u64>(std::stoull(argv[5]));
             auto mode = argc >= 7 ? rmvolePprfParseMode(argv[6]) : RmvolePprfSetupMode::Verify;
-            if (argc == 8 && std::string(argv[7]) != "batched" && std::string(argv[7]) != "batched-regular" && std::string(argv[7]) != "batched-regular-block")
-                throw std::runtime_error("RMVOLE_PPRF_NET_SETUP implementation mode currently supports batched/batched-regular only.");
+            auto implementation = argc == 8
+                ? rmvolePprfParseImplementation(argv[7])
+                : RmvolePprfImplementation::Scalar;
             auto params = rmvolePprfMakeParams(logN, t, m);
 
             rmvolePprfWriteDoc();
-            auto result = rmvolePprfRunLocalTyped<u64, CoeffCtxIntegerPrime_64>(params, mode);
+            auto result = implementation == RmvolePprfImplementation::Vector
+                ? rmvolePprfRunLocalVectorDispatched(params, mode)
+                : rmvolePprfRunLocalTyped<u64, CoeffCtxIntegerPrime_64>(params, mode);
             rmvolePprfPrintLocalRow(params, result);
             return result.ok ? 0 : 1;
         }
@@ -914,8 +1521,8 @@ namespace osuCrypto
         {
             if (argc != 9 && argc != 10 && argc != 11)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
-                          << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [scalar|vector]\n"
+                          << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [scalar|vector]" << std::endl;
                 return 1;
             }
 
@@ -927,23 +1534,25 @@ namespace osuCrypto
             auto m = static_cast<u64>(std::stoull(argv[7]));
             auto reps = static_cast<u64>(std::stoull(argv[8]));
             auto mode = argc >= 10 ? rmvolePprfParseMode(argv[9]) : RmvolePprfSetupMode::Verify;
-            if (argc == 11 && std::string(argv[10]) != "batched" && std::string(argv[10]) != "batched-regular" && std::string(argv[10]) != "batched-regular-block")
-                throw std::runtime_error("RMVOLE_PPRF_NET_SETUP implementation mode currently supports batched/batched-regular only.");
+            auto implementation = argc == 11
+                ? rmvolePprfParseImplementation(argv[10])
+                : RmvolePprfImplementation::Scalar;
             if (!reps)
                 throw std::runtime_error("RMVOLE_PPRF_NET_SETUP TCP mode requires reps > 0.");
 
             auto params = rmvolePprfMakeParams(logN, t, m);
             rmvolePprfWriteDoc();
-            auto row = rmvolePprfRunTcpRoleTyped<u64, CoeffCtxIntegerPrime_64>(
-                server, host, port, params, reps, mode);
+            auto row = implementation == RmvolePprfImplementation::Vector
+                ? rmvolePprfRunTcpVectorRoleDispatched(server, host, port, params, reps, mode)
+                : rmvolePprfRunTcpRoleTyped<u64, CoeffCtxIntegerPrime_64>(server, host, port, params, reps, mode);
             rmvolePprfPrintTcpRow(row);
             rmvolePprfAppendTcpCsv(row);
             return row.ok ? 0 : 1;
         }
 
-        std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [batched|batched-regular]\n"
-                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
-                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]" << std::endl;
+        std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [scalar|vector]\n"
+                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [scalar|vector]\n"
+                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [scalar|vector]" << std::endl;
         return 1;
     }
 }
