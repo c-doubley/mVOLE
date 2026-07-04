@@ -55,6 +55,7 @@ namespace osuCrypto
     {
         bool ok = false;
         std::string mode = "verify";
+        std::string implementationMode = "batched-regular-block";
         double sSetupSeconds = 0;
         double eSetupSeconds = 0;
         double verifySeconds = 0;
@@ -66,6 +67,7 @@ namespace osuCrypto
         u64 scalarPprfCountS = 0;
         u64 scalarPprfCountE = 0;
         u64 totalScalarPprfCount = 0;
+        u64 defaultBaseOtCalls = 0;
         u64 expandedLeavesPerCoordinatePerSparseVector = 0;
         u64 totalScalarExpandedLeaves = 0;
         double totalScalarExpandedLeavesOver2MN = 0;
@@ -76,6 +78,7 @@ namespace osuCrypto
     {
         std::string method = "RMVOLE-PPRF-RegularPprf";
         std::string mode = "verify";
+        std::string implementationMode = "batched-regular-block";
         std::string role;
         std::string network;
         std::string address;
@@ -97,6 +100,7 @@ namespace osuCrypto
         u64 scalarPprfCountS = 0;
         u64 scalarPprfCountE = 0;
         u64 totalScalarPprfCount = 0;
+        u64 defaultBaseOtCalls = 0;
         u64 expandedLeavesPerCoordinatePerSparseVector = 0;
         u64 totalScalarExpandedLeaves = 0;
         double totalScalarExpandedLeavesOver2MN = 0;
@@ -291,9 +295,10 @@ namespace osuCrypto
         const RmvolePprfNetSetupParams& params,
         RmvolePprfNetSetupResult& result)
     {
-        result.scalarPprfCountS = params.m * params.t;
-        result.scalarPprfCountE = params.m * params.t;
-        result.totalScalarPprfCount = 2 * params.m * params.t;
+        result.scalarPprfCountS = params.m;
+        result.scalarPprfCountE = params.m;
+        result.totalScalarPprfCount = 2 * params.m;
+        result.defaultBaseOtCalls = result.totalScalarPprfCount;
         result.expandedLeavesPerCoordinatePerSparseVector = params.N;
         result.totalScalarExpandedLeaves = 2 * params.m * params.N;
         result.totalScalarExpandedLeavesOver2MN =
@@ -304,9 +309,10 @@ namespace osuCrypto
         const RmvolePprfNetSetupParams& params,
         RmvolePprfTcpSetupRow& row)
     {
-        row.scalarPprfCountS = params.m * params.t;
-        row.scalarPprfCountE = params.m * params.t;
-        row.totalScalarPprfCount = 2 * params.m * params.t;
+        row.scalarPprfCountS = params.m;
+        row.scalarPprfCountE = params.m;
+        row.totalScalarPprfCount = 2 * params.m;
+        row.defaultBaseOtCalls = row.totalScalarPprfCount;
         row.expandedLeavesPerCoordinatePerSparseVector = params.N;
         row.totalScalarExpandedLeaves = 2 * params.m * params.N;
         row.totalScalarExpandedLeavesOver2MN =
@@ -405,9 +411,10 @@ namespace osuCrypto
         RmvolePprfNetSetupResult result;
         rmvolePprfFillCounters(params, result);
         result.mode = rmvolePprfModeName(mode);
+        result.implementationMode = "batched-regular-block";
         result.notes = mode == RmvolePprfSetupMode::Verify
-            ? "local_async_socket; verify; DefaultBaseOT repeated per scalar RegularPprf; s_and_e; centralized_offsets_delta_s_e"
-            : "local_async_socket; bench; DefaultBaseOT repeated per scalar RegularPprf; no_reconstruction_opening";
+            ? "local_async_socket; verify; batched_regular_block; one_RegularPprf_per_coordinate_per_sparse_vector; DefaultBaseOT repeated per RegularPprf instance; s_and_e; centralized_offsets_delta_s_e"
+            : "local_async_socket; bench; batched_regular_block; one_RegularPprf_per_coordinate_per_sparse_vector; DefaultBaseOT repeated per RegularPprf instance; no_reconstruction_opening";
 
         PRNG prng(sysRandomSeed());
         std::vector<F> delta(params.m);
@@ -439,24 +446,24 @@ namespace osuCrypto
     inline void rmvolePprfAppendTcpCsv(const RmvolePprfTcpSetupRow& row)
     {
         const auto path = std::filesystem::path("docs/rmvole_pprf_tcp_setup_clean.csv");
-        auto needsHeader = row.role == "sender-server"
-            && (!std::filesystem::exists(path) || std::filesystem::file_size(path) == 0);
+        auto needsHeader = !std::filesystem::exists(path) || std::filesystem::file_size(path) == 0;
         std::ofstream out(path, std::ios::app);
         if (!out)
             throw std::runtime_error("failed to open docs/rmvole_pprf_tcp_setup_clean.csv");
 
         if (needsHeader)
         {
-            out << "method,mode,role,network,address,logN,N,t,m,blockSize,reps,"
+            out << "method,mode,implementation_mode,role,network,address,logN,N,t,m,blockSize,reps,"
                 << "median_s_setup_s,median_e_setup_s,median_total_setup_s,median_verify_s,"
                 << "bytes_sent_by_role,bytes_received_by_role,total_local_socket_bytes,harness_metadata_bytes,clean_protocol_bytes,"
-                << "scalar_pprf_count_s,scalar_pprf_count_e,total_scalar_pprf_count,"
+                << "scalar_pprf_instances_s,scalar_pprf_instances_e,total_scalar_pprf_instances,default_base_ot_calls,"
                 << "expanded_leaves_per_coordinate_per_sparse_vector,total_scalar_expanded_leaves,"
                 << "total_scalar_expanded_leaves_over_2mN,ok,notes\n";
         }
 
         out << rmvolePprfCsvEscape(row.method) << ','
             << rmvolePprfCsvEscape(row.mode) << ','
+            << rmvolePprfCsvEscape(row.implementationMode) << ','
             << rmvolePprfCsvEscape(row.role) << ','
             << rmvolePprfCsvEscape(row.network) << ','
             << rmvolePprfCsvEscape(row.address) << ','
@@ -478,6 +485,7 @@ namespace osuCrypto
             << row.scalarPprfCountS << ','
             << row.scalarPprfCountE << ','
             << row.totalScalarPprfCount << ','
+            << row.defaultBaseOtCalls << ','
             << row.expandedLeavesPerCoordinatePerSparseVector << ','
             << row.totalScalarExpandedLeaves << ','
             << std::setprecision(12) << row.totalScalarExpandedLeavesOver2MN << ','
@@ -654,6 +662,7 @@ namespace osuCrypto
 
         RmvolePprfTcpSetupRow row;
         row.mode = rmvolePprfModeName(mode);
+        row.implementationMode = "batched-regular-block";
         row.role = server ? "sender-server" : "receiver-client";
         row.network = rmvolePprfTcpNetworkLabel(host);
         row.address = address;
@@ -666,11 +675,11 @@ namespace osuCrypto
         rmvolePprfFillTcpCounters(params, row);
         row.notes = mode == RmvolePprfSetupMode::Verify
             ? (server
-                ? "tcp_two_process; verify; server_runs_RegularPprfSender; receives_test_beta; sends_sender_output_for_opening; DefaultBaseOT_repeated_per_scalar"
-                : "tcp_two_process; verify; client_generates_centralized_test_inputs; verifies_s_and_e; DefaultBaseOT_repeated_per_scalar")
+                ? "tcp_two_process; verify; server_runs_batched_RegularPprfSender; receives_test_beta; sends_sender_output_for_opening; DefaultBaseOT_repeated_per_batched_RegularPprf"
+                : "tcp_two_process; verify; client_generates_centralized_test_inputs; verifies_s_and_e; DefaultBaseOT_repeated_per_batched_RegularPprf")
             : (server
-                ? "tcp_two_process; bench; server_runs_RegularPprfSender; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_scalar"
-                : "tcp_two_process; bench; receiver_choices_local; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_scalar");
+                ? "tcp_two_process; bench; server_runs_batched_RegularPprfSender; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_batched_RegularPprf"
+                : "tcp_two_process; bench; receiver_choices_local; no_beta_or_opening_traffic; DefaultBaseOT_repeated_per_batched_RegularPprf");
         row.ok = true;
 
         for (u64 rep = 0; rep < reps; ++rep)
@@ -733,6 +742,7 @@ namespace osuCrypto
         std::cout << std::fixed << std::setprecision(6)
                   << "RMVOLE_PPRF_NET_SETUP"
                   << " mode=" << row.mode
+                  << " implementation_mode=" << row.implementationMode
                   << " role=" << row.role
                   << " network=" << row.network
                   << " address=" << row.address
@@ -751,9 +761,10 @@ namespace osuCrypto
                   << " total_bytes=" << row.totalLocalSocketBytes
                   << " harness_metadata_bytes=" << row.harnessMetadataBytes
                   << " clean_protocol_bytes=" << row.cleanProtocolBytes
-                  << " scalar_pprf_count_s=" << row.scalarPprfCountS
-                  << " scalar_pprf_count_e=" << row.scalarPprfCountE
-                  << " total_scalar_pprf_count=" << row.totalScalarPprfCount
+                  << " scalar_pprf_instances_s=" << row.scalarPprfCountS
+                  << " scalar_pprf_instances_e=" << row.scalarPprfCountE
+                  << " total_scalar_pprf_instances=" << row.totalScalarPprfCount
+                  << " default_base_ot_calls=" << row.defaultBaseOtCalls
                   << " expanded_leaves_per_coordinate_per_sparse_vector=" << row.expandedLeavesPerCoordinatePerSparseVector
                   << " total_scalar_expanded_leaves=" << row.totalScalarExpandedLeaves
                   << " total_scalar_expanded_leaves_over_2mN=" << row.totalScalarExpandedLeavesOver2MN
@@ -770,9 +781,9 @@ namespace osuCrypto
             << "Phase 6E adds `RmvolePprfNetSetupTest.h` and CLI flag `--RMVOLE_PPRF_NET_SETUP`.\n\n"
             << "## Modes\n\n"
             << "```bash\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench]\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench]\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [batched|batched-regular]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
             << "```\n\n"
             << "The optional mode defaults to `verify` for backward compatibility. `verify` opens shares for correctness. `bench` runs only `DefaultBaseOT` plus `RegularPprf` setup and does not exchange correctness-opening data.\n\n"
             << "Example TCP loopback run:\n\n"
@@ -789,6 +800,10 @@ namespace osuCrypto
             << "- TCP channel: `coproto::asioConnect(address, server)`, with server running `RegularPprfSender` and client running `RegularPprfReceiver`.\n"
             << "- Base OT: `DefaultBaseOT::send()` and `DefaultBaseOT::receive()` are run before every scalar RegularPprf instance.\n"
             << "- PPRF expansion: sender calls `expand(socket, beta, seed, senderOut, PprfOutputFormat::ByTreeIndex, true, 1, ctx)` and receiver calls `expand(socket, receiverOut, PprfOutputFormat::ByTreeIndex, true, 1, ctx)`.\n\n"
+            << "## Phase 6E-4 Batching Audit\n\n"
+            << "`RegularPprf` is already a multi-point regular PPRF API. `configure(domainSize, pointCount)` sets the leaf domain for each tree and the number of punctured trees. `baseOtCount()` returns `log2(domainSize) * pointCount`, and `expand()` outputs `domainSize * pointCount` leaves in `ByTreeIndex` format.\n\n"
+            << "The correct regular-block model for RM-VOLE setup is `domainSize = blockSize = N/t` and `pointCount = t`: one tree per regular block, one puncture per tree, and total output `t * blockSize = N` leaves per coordinate per sparse vector. A single `RegularPprf` configured as `domainSize = N, pointCount = t` would output `t*N` leaves and would not match the desired one-puncture-per-block layout without extra projection, so it is not the right model.\n\n"
+            << "The current implementation mode is therefore `batched-regular-block`: one batched scalar `RegularPprf` for each coordinate of `s`, and one for each coordinate of `e`. This means `scalar_pprf_instances_s = m`, `scalar_pprf_instances_e = m`, and `total_scalar_pprf_instances = 2*m`. Since the harness still calls `DefaultBaseOT` once per batched `RegularPprf` instance, `default_base_ot_calls = 2*m` per role. The API clears base OT state after expansion, so this phase does not attempt to reuse the same base OT material across multiple `RegularPprf` instances.\n\n"
             << "## Relation Tested\n\n"
             << "For `N = 2^logN`, `blockSize = N/t`, and each block `i`, the harness centrally samples sparse offsets and nonzero scalars for both `s` and `e`, plus extension-coordinate scalars `Delta_h`. It programs two sparse vectors:\n\n"
             << "```text\n"
@@ -804,32 +819,32 @@ namespace osuCrypto
             << "In `verify` mode, local mode opens simulated shares in one process and checks all `2*m*N` scalar positions. TCP verify mode has the client centrally generate correctness-test inputs and send each scalar `beta` vector to the server; after each PPRF, the server sends its output share back to the client so the client can open and verify. This metadata/share opening is only for the correctness harness.\n\n"
             << "In `bench` mode, the sender locally samples the programmed scalar payloads and the receiver locally samples its regular-block choices. The parties still run real `DefaultBaseOT` and `RegularPprf` over the selected socket, but they do not send `beta`, `senderOut`, or reconstruction-opening data.\n\n"
             << "## Counters And Bytes\n\n"
-            << "`scalar_pprf_count_s = m*t`, `scalar_pprf_count_e = m*t`, `total_scalar_pprf_count = 2*m*t`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup_clean.csv`.\n\n"
+            << "`scalar_pprf_instances_s = m`, `scalar_pprf_instances_e = m`, `total_scalar_pprf_instances = 2*m`, `default_base_ot_calls = 2*m`, `expanded_leaves_per_coordinate_per_sparse_vector = N`, and `total_scalar_expanded_leaves = 2*m*N`. TCP rows are appended to `docs/rmvole_pprf_tcp_setup_clean.csv`.\n\n"
             << "`bench` socket counters are the clean protocol measurement for this harness: `DefaultBaseOT` plus `RegularPprf` only. `verify` socket counters include test metadata (`beta` sent from client to server) and verification opening traffic (`senderOut` sent from server to client). The `harness_metadata_bytes` column is a payload-size estimate for those correctness messages; message framing can make `verify - bench` slightly larger. The repeated `DefaultBaseOT` per scalar PPRF is a likely overestimate and a future batching/reuse target.\n\n"
-            << "## Phase 6E-3 TCP Smoke Results\n\n"
+            << "## Phase 6E-4 TCP Smoke Results\n\n"
             << "Commands tested on one host:\n\n"
             << "```bash\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12230 12 8 8 3 verify\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12230 12 8 8 3 verify\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12231 12 8 8 3 bench\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12231 12 8 8 3 bench\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12232 14 16 16 3 bench\n"
-            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12232 14 16 16 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12242 12 8 8 3 verify\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12242 12 8 8 3 verify\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12240 12 8 8 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12240 12 8 8 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP server 0.0.0.0 12241 14 16 16 3 bench\n"
+            << "./build/main --RMVOLE_PPRF_NET_SETUP client 127.0.0.1 12241 14 16 16 3 bench\n"
             << "```\n\n"
             << "| mode | logN | t | m | role | median total setup s | local socket bytes | clean protocol bytes | harness metadata bytes |\n"
             << "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
-            << "| verify | 12 | 8 | 8 | sender-server | 0.124626 | 1807152 | 231216 | 1575936 |\n"
-            << "| verify | 12 | 8 | 8 | receiver-client | 0.124652 | 1807152 | 231216 | 1575936 |\n"
-            << "| bench | 12 | 8 | 8 | sender-server | 0.094229 | 230448 | 230448 | 0 |\n"
-            << "| bench | 12 | 8 | 8 | receiver-client | 0.094204 | 230448 | 230448 | 0 |\n"
-            << "| bench | 14 | 16 | 16 | sender-server | 0.401627 | 1019184 | 1019184 | 0 |\n"
-            << "| bench | 14 | 16 | 16 | receiver-client | 0.401663 | 1019184 | 1019184 | 0 |\n\n"
+            << "| verify | 12 | 8 | 8 | sender-server | 0.079683 | 1807152 | 231216 | 1575936 |\n"
+            << "| verify | 12 | 8 | 8 | receiver-client | 0.079687 | 1807152 | 231216 | 1575936 |\n"
+            << "| bench | 12 | 8 | 8 | sender-server | 0.077437 | 230448 | 230448 | 0 |\n"
+            << "| bench | 12 | 8 | 8 | receiver-client | 0.077430 | 230448 | 230448 | 0 |\n"
+            << "| bench | 14 | 16 | 16 | sender-server | 0.329987 | 1019184 | 1019184 | 0 |\n"
+            << "| bench | 14 | 16 | 16 | receiver-client | 0.330009 | 1019184 | 1019184 | 0 |\n\n"
             << "At `logN=12,t=8,m=8`, verify mode used 1,807,152 local socket bytes per role while bench mode used 230,448. The verification-only difference was 1,576,704 bytes per role, dominated by the `beta` and `senderOut` correctness traffic.\n\n"
             << "## Caveats\n\n"
             << "- This is a semi-honest correctness/API harness, not secure input generation.\n"
             << "- It uses real coproto sockets and libOTe `DefaultBaseOT`/`RegularPprf` network messages.\n"
             << "- It still uses centralized test input generation.\n"
-            << "- It runs `m` independent scalar RegularPprf instances for `s` and another `m` for `e`; it is not the final shared-path vector-valued PPRF.\n"
+            << "- It runs `m` independent batched scalar RegularPprf instances for `s` and another `m` for `e`; it is not the final shared-path vector-valued PPRF.\n"
             << "- It is setup only, not the full RM-VOLE expand path or LAN runtime for the whole construction.\n\n"
             << "## Next Step\n\n"
             << "Batch or reuse base OT material across scalar PPRFs where valid, then replace the coordinate-wise adapter with a shared-path vector-valued PPRF so path/base material is paid once and only coordinate payloads scale with `m`.\n";
@@ -842,6 +857,7 @@ namespace osuCrypto
         std::cout << std::fixed << std::setprecision(6)
                   << "RMVOLE_PPRF_NET_SETUP"
                   << " mode=" << result.mode
+                  << " implementation_mode=" << result.implementationMode
                   << " transport=local"
                   << " field=Fp64"
                   << " logN=" << params.logN
@@ -858,9 +874,10 @@ namespace osuCrypto
                   << " total_bytes=" << result.totalBytes
                   << " harness_metadata_bytes=" << result.harnessMetadataBytes
                   << " clean_protocol_bytes=" << result.cleanProtocolBytes
-                  << " scalar_pprf_count_s=" << result.scalarPprfCountS
-                  << " scalar_pprf_count_e=" << result.scalarPprfCountE
-                  << " total_scalar_pprf_count=" << result.totalScalarPprfCount
+                  << " scalar_pprf_instances_s=" << result.scalarPprfCountS
+                  << " scalar_pprf_instances_e=" << result.scalarPprfCountE
+                  << " total_scalar_pprf_instances=" << result.totalScalarPprfCount
+                  << " default_base_ot_calls=" << result.defaultBaseOtCalls
                   << " expanded_leaves_per_coordinate_per_sparse_vector=" << result.expandedLeavesPerCoordinatePerSparseVector
                   << " total_scalar_expanded_leaves=" << result.totalScalarExpandedLeaves
                   << " total_scalar_expanded_leaves_over_2mN=" << result.totalScalarExpandedLeavesOver2MN
@@ -873,16 +890,18 @@ namespace osuCrypto
     {
         if (argc >= 3 && std::string(argv[2]) == "local")
         {
-            if (argc != 6 && argc != 7)
+            if (argc != 6 && argc != 7 && argc != 8)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [batched|batched-regular]" << std::endl;
                 return 1;
             }
 
             auto logN = static_cast<u64>(std::stoull(argv[3]));
             auto t = static_cast<u64>(std::stoull(argv[4]));
             auto m = static_cast<u64>(std::stoull(argv[5]));
-            auto mode = argc == 7 ? rmvolePprfParseMode(argv[6]) : RmvolePprfSetupMode::Verify;
+            auto mode = argc >= 7 ? rmvolePprfParseMode(argv[6]) : RmvolePprfSetupMode::Verify;
+            if (argc == 8 && std::string(argv[7]) != "batched" && std::string(argv[7]) != "batched-regular" && std::string(argv[7]) != "batched-regular-block")
+                throw std::runtime_error("RMVOLE_PPRF_NET_SETUP implementation mode currently supports batched/batched-regular only.");
             auto params = rmvolePprfMakeParams(logN, t, m);
 
             rmvolePprfWriteDoc();
@@ -893,10 +912,10 @@ namespace osuCrypto
 
         if (argc >= 3 && (std::string(argv[2]) == "server" || std::string(argv[2]) == "client"))
         {
-            if (argc != 9 && argc != 10)
+            if (argc != 9 && argc != 10 && argc != 11)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench]\n"
-                          << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
+                          << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]" << std::endl;
                 return 1;
             }
 
@@ -907,7 +926,9 @@ namespace osuCrypto
             auto t = static_cast<u64>(std::stoull(argv[6]));
             auto m = static_cast<u64>(std::stoull(argv[7]));
             auto reps = static_cast<u64>(std::stoull(argv[8]));
-            auto mode = argc == 10 ? rmvolePprfParseMode(argv[9]) : RmvolePprfSetupMode::Verify;
+            auto mode = argc >= 10 ? rmvolePprfParseMode(argv[9]) : RmvolePprfSetupMode::Verify;
+            if (argc == 11 && std::string(argv[10]) != "batched" && std::string(argv[10]) != "batched-regular" && std::string(argv[10]) != "batched-regular-block")
+                throw std::runtime_error("RMVOLE_PPRF_NET_SETUP implementation mode currently supports batched/batched-regular only.");
             if (!reps)
                 throw std::runtime_error("RMVOLE_PPRF_NET_SETUP TCP mode requires reps > 0.");
 
@@ -920,9 +941,9 @@ namespace osuCrypto
             return row.ok ? 0 : 1;
         }
 
-        std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench]\n"
-                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench]\n"
-                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench]" << std::endl;
+        std::cerr << "Usage: ./build/main --RMVOLE_PPRF_NET_SETUP local <logN> <t> <m> [verify|bench] [batched|batched-regular]\n"
+                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]\n"
+                  << "       ./build/main --RMVOLE_PPRF_NET_SETUP client <host> <port> <logN> <t> <m> <reps> [verify|bench] [batched|batched-regular]" << std::endl;
         return 1;
     }
 }
