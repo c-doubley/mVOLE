@@ -31,3 +31,7 @@ libOTe-NoisyVole,loopback-inproc,16384,14,8,"array<u8,m> over scalar u8",128,0.0
 libOTe-NoisyVole,loopback-inproc,16384,14,16,"array<u8,m> over scalar u8",128,0.227716879,4376,33554504,33558880,262144,1151183.87864,4.3914179941,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
 libOTe-NoisyVole,loopback-inproc,16384,14,32,"array<u8,m> over scalar u8",128,0.581936822,8728,134217800,134226528,524288,900936.287548,1.71839959631,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
 libOTe-NoisyVole,loopback-inproc,16384,14,64,"array<u8,m> over scalar u8",128,0,0,0,0,1048576,0,0,0,unsupported_by_harness_payload_guard; estimated_noisy_payload_bytes=536870912
+libOTe-NoisyVole,loopback-inproc,4096,12,8,"array<u8,m> over scalar u8",128,0.022871479,2200,2097224,2099424,32768,1432701.40073,43.7225769265,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-inproc,4096,12,16,"array<u8,m> over scalar u8",128,0.066964663,4376,8388680,8393056,65536,978665.419402,14.9332491974,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-inproc,4096,12,32,"array<u8,m> over scalar u8",128,0.164787131,8728,33554504,33563232,131072,795401.917641,6.0684350406,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
+libOTe-NoisyVole,loopback-inproc,4096,12,64,"array<u8,m> over scalar u8",128,0.551650583,17432,134217800,134235232,262144,475199.352776,1.81274167166,1,median_of_3_trials; measured_full_noisy_vole_with_DefaultBaseOT
