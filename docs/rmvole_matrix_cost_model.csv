@@ -1,0 +1,21 @@
+logN,N,m,q,rank_one_time_s,rank_one_comm_bytes,matrix_time_s,matrix_comm_bytes,notes
+14,16384,8,16,0.066537000,3283392,1.064592000,52534272,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,8,32,0.066537000,3283392,2.129184000,105068544,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,8,64,0.066537000,3283392,4.258368000,210137088,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,8,128,0.066537000,3283392,8.516736000,420274176,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,16,16,0.156831000,12797376,2.509296000,204758016,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,16,32,0.156831000,12797376,5.018592000,409516032,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,16,64,0.156831000,12797376,10.037184000,819032064,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,16,128,0.156831000,12797376,20.074368000,1638064128,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,32,16,0.254786000,50699712,4.076576000,811195392,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,32,32,0.254786000,50699712,8.153152000,1622390784,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,32,64,0.254786000,50699712,16.306304000,3244781568,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+14,16384,32,128,0.254786000,50699712,32.612608000,6489563136,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,8,16,0.212115000,12975456,3.393840000,207607296,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,8,32,0.212115000,12975456,6.787680000,415214592,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,8,64,0.212115000,12975456,13.575360000,830429184,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,8,128,0.212115000,12975456,27.150720000,1660858368,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,16,16,0.306458000,50874720,4.903328000,813995520,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,16,32,0.306458000,50874720,9.806656000,1627991040,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,16,64,0.306458000,50874720,19.613312000,3255982080,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
+16,65536,16,128,0.306458000,50874720,39.226624000,6511964160,linear model: q independent conservative RM rank-one instances using split-input-vole measurements
