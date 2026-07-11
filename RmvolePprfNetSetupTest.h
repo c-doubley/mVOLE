@@ -229,6 +229,26 @@ namespace osuCrypto
             ret %= Base::PR;
         }
 
+        OC_FORCEINLINE void powerOfTwo(F& ret, u64 power)
+        {
+            for (u64 i = 0; i < M; ++i)
+                ret[i] = 0;
+
+            auto coord = power / 64;
+            if (coord >= M)
+                return;
+
+            auto bit = power % 64;
+            auto value = (static_cast<unsigned __int128>(1) << bit) % Base::PR;
+            ret[coord] = static_cast<u64>(value);
+        }
+
+        OC_FORCEINLINE void powerOfTwo(u64& ret, u64 power)
+        {
+            auto value = (static_cast<unsigned __int128>(1) << (power % 64)) % Base::PR;
+            ret = static_cast<u64>(value);
+        }
+
         std::string str(const F& f)
         {
             std::stringstream ss;

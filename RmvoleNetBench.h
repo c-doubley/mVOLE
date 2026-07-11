@@ -5,6 +5,8 @@
 #include "RmvolePprfNetSetupTest.h"
 #include "coproto/Socket/AsioSocket.h"
 #include "coproto/Socket/LocalAsyncSock.h"
+#include "libOTe/Vole/Noisy/NoisyVoleReceiver.h"
+#include "libOTe/Vole/Noisy/NoisyVoleSender.h"
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
@@ -26,7 +28,8 @@ namespace osuCrypto
     enum class RmvoleNetBenchSetupMode
     {
         Centralized,
-        SplitInputSimulated
+        SplitInputSimulated,
+        SplitInputVole
     };
 
     inline std::string rmvoleNetBenchModeName(RmvoleNetBenchMode mode)
@@ -45,6 +48,8 @@ namespace osuCrypto
 
     inline std::string rmvoleNetBenchSetupModeName(RmvoleNetBenchSetupMode mode)
     {
+        if (mode == RmvoleNetBenchSetupMode::SplitInputVole)
+            return "split-input-vole";
         return mode == RmvoleNetBenchSetupMode::SplitInputSimulated ? "split-input-simulated" : "centralized";
     }
 
@@ -54,7 +59,9 @@ namespace osuCrypto
             return RmvoleNetBenchSetupMode::Centralized;
         if (value == "split-input" || value == "split-input-simulated" || value == "simulated")
             return RmvoleNetBenchSetupMode::SplitInputSimulated;
-        throw std::runtime_error("RMVOLE_NET_BENCH setup mode must be centralized or split-input.");
+        if (value == "split-input-vole" || value == "vole")
+            return RmvoleNetBenchSetupMode::SplitInputVole;
+        throw std::runtime_error("RMVOLE_NET_BENCH setup mode must be centralized, split-input, or split-input-vole.");
     }
 
     struct RmvoleNetBenchParams
@@ -159,6 +166,12 @@ namespace osuCrypto
     inline u64 rmvoleNetBenchSplitMetadataBytes(const RmvoleNetBenchParams& params)
     {
         return sizeof(block) + params.m * sizeof(u64);
+    }
+
+    inline bool rmvoleNetBenchUsesSplitInput(RmvoleNetBenchSetupMode setupMode)
+    {
+        return setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputVole;
     }
 
     template<typename F, typename Ctx>
@@ -319,6 +332,160 @@ namespace osuCrypto
         }
 
         return shares;
+    }
+
+    template<u64 M>
+    struct RmvoleNetBenchSplitSharePair
+    {
+        RmvoleNetBenchSplitShares<M> s;
+        RmvoleNetBenchSplitShares<M> e;
+    };
+
+    template<u64 M>
+    typename CoeffCtxPrimeArray64<M>::template Vec<u64> rmvoleNetBenchBuildCombinedSparseCoefficients(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        CoeffCtxPrimeArray64<M>& vectorCtx)
+    {
+        typename CoeffCtxPrimeArray64<M>::template Vec<u64> c;
+        vectorCtx.resize(c, 2 * params.t);
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            c[i] = instance.sparseS.values[i];
+            c[params.t + i] = instance.sparseE.values[i];
+        }
+        return c;
+    }
+
+    template<u64 M>
+    void rmvoleNetBenchSplitNoisyVoleOutputs(
+        const RmvoleNetBenchParams& params,
+        const typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>>& a,
+        const typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>>& b,
+        RmvoleNetBenchSplitSharePair<M>& out,
+        CoeffCtxPrimeArray64<M>& vectorCtx)
+    {
+        vectorCtx.resize(out.s.p0Additive, params.t);
+        vectorCtx.resize(out.s.p1ProgrammedNeg, params.t);
+        vectorCtx.resize(out.e.p0Additive, params.t);
+        vectorCtx.resize(out.e.p1ProgrammedNeg, params.t);
+
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            vectorCtx.copy(out.s.p0Additive[i], a[i]);
+            vectorCtx.minus(out.s.p1ProgrammedNeg[i], RmvolePprfPrimeVector<M>{}, b[i]);
+            vectorCtx.copy(out.e.p0Additive[i], a[params.t + i]);
+            vectorCtx.minus(out.e.p1ProgrammedNeg[i], RmvolePprfPrimeVector<M>{}, b[params.t + i]);
+        }
+    }
+
+    template<u64 M>
+    RmvoleNetBenchSplitSharePair<M> rmvoleNetBenchRunLocalNoisyVoleSplitInput(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        cp::Socket& p0ReceiverSocket,
+        cp::Socket& p1SenderSocket,
+        double& splitSeconds,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+        using VecG = typename CoeffCtxPrimeArray64<M>::template Vec<u64>;
+
+        NoisyVoleReceiver<VectorF, u64, CoeffCtxPrimeArray64<M>> receiver;
+        NoisyVoleSender<VectorF, u64, CoeffCtxPrimeArray64<M>> sender;
+        DefaultBaseOT receiverBaseOt;
+        DefaultBaseOT senderBaseOt;
+        VecG c = rmvoleNetBenchBuildCombinedSparseCoefficients<M>(params, instance, vectorCtx);
+        VecF a;
+        VecF b;
+        vectorCtx.resize(a, 2 * params.t);
+        vectorCtx.resize(b, 2 * params.t);
+
+        auto start = omp_get_wtime();
+        auto recvTask = receiver.receive(c, a, prng, receiverBaseOt, p0ReceiverSocket, vectorCtx);
+        auto sendTask = sender.send(instance.delta, b, prng, senderBaseOt, p1SenderSocket, vectorCtx);
+        auto result = macoro::sync_wait(macoro::when_all_ready(std::move(recvTask), std::move(sendTask)));
+        std::get<0>(result).result();
+        std::get<1>(result).result();
+        splitSeconds += omp_get_wtime() - start;
+
+        RmvoleNetBenchSplitSharePair<M> out;
+        rmvoleNetBenchSplitNoisyVoleOutputs<M>(params, a, b, out, vectorCtx);
+        return out;
+    }
+
+    template<u64 M>
+    RmvoleNetBenchSplitSharePair<M> rmvoleNetBenchRunTcpServerNoisyVoleSplitInput(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        cp::Socket& socket,
+        double& splitSeconds,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+        using VecG = typename CoeffCtxPrimeArray64<M>::template Vec<u64>;
+
+        NoisyVoleReceiver<VectorF, u64, CoeffCtxPrimeArray64<M>> receiver;
+        DefaultBaseOT receiverBaseOt;
+        VecG c = rmvoleNetBenchBuildCombinedSparseCoefficients<M>(params, instance, vectorCtx);
+        VecF a;
+        vectorCtx.resize(a, 2 * params.t);
+
+        auto start = omp_get_wtime();
+        auto recvTask = receiver.receive(c, a, prng, receiverBaseOt, socket, vectorCtx);
+        macoro::sync_wait(std::move(recvTask));
+        splitSeconds += omp_get_wtime() - start;
+
+        RmvoleNetBenchSplitSharePair<M> out;
+        vectorCtx.resize(out.s.p0Additive, params.t);
+        vectorCtx.resize(out.s.p1ProgrammedNeg, params.t);
+        vectorCtx.resize(out.e.p0Additive, params.t);
+        vectorCtx.resize(out.e.p1ProgrammedNeg, params.t);
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            vectorCtx.copy(out.s.p0Additive[i], a[i]);
+            vectorCtx.copy(out.e.p0Additive[i], a[params.t + i]);
+        }
+        return out;
+    }
+
+    template<u64 M>
+    RmvoleNetBenchSplitSharePair<M> rmvoleNetBenchRunTcpClientNoisyVoleSplitInput(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        cp::Socket& socket,
+        double& splitSeconds,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+
+        NoisyVoleSender<VectorF, u64, CoeffCtxPrimeArray64<M>> sender;
+        DefaultBaseOT senderBaseOt;
+        VecF b;
+        vectorCtx.resize(b, 2 * params.t);
+
+        auto start = omp_get_wtime();
+        auto sendTask = sender.send(instance.delta, b, prng, senderBaseOt, socket, vectorCtx);
+        macoro::sync_wait(std::move(sendTask));
+        splitSeconds += omp_get_wtime() - start;
+
+        RmvoleNetBenchSplitSharePair<M> out;
+        vectorCtx.resize(out.s.p0Additive, params.t);
+        vectorCtx.resize(out.s.p1ProgrammedNeg, params.t);
+        vectorCtx.resize(out.e.p0Additive, params.t);
+        vectorCtx.resize(out.e.p1ProgrammedNeg, params.t);
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            vectorCtx.minus(out.s.p1ProgrammedNeg[i], VectorF{}, b[i]);
+            vectorCtx.minus(out.e.p1ProgrammedNeg[i], VectorF{}, b[params.t + i]);
+        }
+        return out;
     }
 
     template<u64 M>
@@ -752,9 +919,12 @@ namespace osuCrypto
         RmvoleNetBenchSetupMode setupMode)
     {
         RmvoleNetBenchRow row;
-        row.method = setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated
-            ? "RMVOLE-simulated-split-input-vector-RegularPprf-setup-local-expand"
-            : "RMVOLE-vector-RegularPprf-setup-local-expand";
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+            row.method = "RMVOLE-noisy-VOLE-split-input-vector-RegularPprf-setup-local-expand";
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
+            row.method = "RMVOLE-simulated-split-input-vector-RegularPprf-setup-local-expand";
+        else
+            row.method = "RMVOLE-vector-RegularPprf-setup-local-expand";
         row.mode = rmvoleNetBenchModeName(mode);
         row.setupMode = rmvoleNetBenchSetupModeName(setupMode);
         row.logN = params.logN;
@@ -763,9 +933,12 @@ namespace osuCrypto
         row.m = params.m;
         row.blockSize = params.blockSize;
         row.entries = params.m * params.N;
-        row.notes = setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated
-            ? "local_async_pair; simulated_split_input_product_shares; p0_receiver_p1_sender; vector_fixed_prime_setup; local_expand; not_secure_split_input"
-            : "local_async_pair; vector_fixed_prime_setup; local_expand; centralized_test_instance";
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+            row.notes = "local_async_pair; real_libOTe_NoisyVole_split_input_length_2t; F=array<u64,M>; G=u64; p0_noisy_vole_receiver; p1_noisy_vole_sender; vector_fixed_prime_setup; local_expand";
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
+            row.notes = "local_async_pair; simulated_split_input_product_shares; p0_receiver_p1_sender; vector_fixed_prime_setup; local_expand; not_secure_split_input";
+        else
+            row.notes = "local_async_pair; vector_fixed_prime_setup; local_expand; centralized_test_instance";
 
         PRNG prng(sysRandomSeed());
         CoeffCtxIntegerPrime_64 scalarCtx;
@@ -778,7 +951,22 @@ namespace osuCrypto
         rmvoleNetBenchBuildP1Gen<M>(p1Gen, params, instance, scalarCtx);
 
         auto sockets = cp::LocalAsyncSocket::makePair();
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+        {
+            auto before = sockets[0].bytesSent() + sockets[1].bytesSent();
+            auto shares = rmvoleNetBenchRunLocalNoisyVoleSplitInput<M>(params, instance, sockets[0], sockets[1], row.splitInputSeconds, prng, vectorCtx);
+            macoro::sync_wait(macoro::when_all_ready(sockets[0].flush(), sockets[1].flush()));
+            auto after = sockets[0].bytesSent() + sockets[1].bytesSent();
+            row.splitInputBytes += after >= before ? after - before : 0;
+
+            before = sockets[0].bytesSent() + sockets[1].bytesSent();
+            rmvoleNetBenchLocalSplitInputVectorPprf<M>(params, instance, shares.s, p0Gen.rowMasks, p1Gen.rowMasks, true, sockets[0], sockets[1], row.pprfSetupSeconds, prng, vectorCtx, scalarCtx);
+            rmvoleNetBenchLocalSplitInputVectorPprf<M>(params, instance, shares.e, p0Gen.rowMasks, p1Gen.rowMasks, false, sockets[0], sockets[1], row.pprfSetupSeconds, prng, vectorCtx, scalarCtx);
+            after = sockets[0].bytesSent() + sockets[1].bytesSent();
+            row.pprfBytes += after >= before ? after - before : 0;
+            row.setupSeconds = row.splitInputSeconds + row.pprfSetupSeconds;
+        }
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
         {
             auto start = omp_get_wtime();
             auto sShares = rmvoleNetBenchBuildSimulatedSplitShares<M>(params, instance, true, prng, vectorCtx, scalarCtx);
@@ -795,8 +983,11 @@ namespace osuCrypto
         }
         else
         {
+            auto before = sockets[0].bytesSent() + sockets[1].bytesSent();
             rmvoleNetBenchLocalVectorPprf<M>(params, instance, p0Gen.rowMasks, p1Gen.rowMasks, true, sockets[0], sockets[1], row.pprfSetupSeconds, prng, vectorCtx, scalarCtx);
             rmvoleNetBenchLocalVectorPprf<M>(params, instance, p0Gen.rowMasks, p1Gen.rowMasks, false, sockets[0], sockets[1], row.pprfSetupSeconds, prng, vectorCtx, scalarCtx);
+            auto after = sockets[0].bytesSent() + sockets[1].bytesSent();
+            row.pprfBytes += after >= before ? after - before : 0;
             row.setupSeconds = row.pprfSetupSeconds;
         }
 
@@ -822,8 +1013,11 @@ namespace osuCrypto
         row.bytesSentByRole = sockets[0].bytesSent();
         row.bytesReceivedByRole = sockets[1].bytesSent();
         row.totalSocketBytes = row.bytesSentByRole + row.bytesReceivedByRole;
-        row.pprfBytes = row.totalSocketBytes;
-        row.cleanProtocolBytes = row.totalSocketBytes + row.splitInputBytes;
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
+            row.pprfBytes = row.totalSocketBytes;
+        row.cleanProtocolBytes = setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated
+            ? row.totalSocketBytes + row.splitInputBytes
+            : row.totalSocketBytes;
         row.totalSeconds = row.setupSeconds + std::max(row.expandP0Seconds, row.expandP1Seconds);
         row.entriesPerSecond = row.totalSeconds > 0 ? static_cast<double>(row.entries) / row.totalSeconds : 0;
         row.bytesPerEntry = row.entries ? static_cast<double>(row.cleanProtocolBytes) / static_cast<double>(row.entries) : 0;
@@ -911,12 +1105,15 @@ namespace osuCrypto
         bool ok = true;
 
         RmvoleNetBenchRow row;
-        row.method = setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated
-            ? "RMVOLE-simulated-split-input-vector-RegularPprf-setup-local-expand"
-            : "RMVOLE-vector-RegularPprf-setup-local-expand";
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+            row.method = "RMVOLE-noisy-VOLE-split-input-vector-RegularPprf-setup-local-expand";
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
+            row.method = "RMVOLE-simulated-split-input-vector-RegularPprf-setup-local-expand";
+        else
+            row.method = "RMVOLE-vector-RegularPprf-setup-local-expand";
         row.mode = rmvoleNetBenchModeName(mode);
         row.setupMode = rmvoleNetBenchSetupModeName(setupMode);
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
+        if (rmvoleNetBenchUsesSplitInput(setupMode))
             row.role = server ? "receiver-server-p0" : "sender-client-p1";
         else
             row.role = server ? "sender-server-p0" : "receiver-client-p1";
@@ -929,7 +1126,13 @@ namespace osuCrypto
         row.blockSize = params.blockSize;
         row.reps = reps;
         row.entries = params.m * params.N;
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+        {
+            row.notes = server
+                ? "tcp_two_process; p0_noisy_vole_receiver; real_libOTe_NoisyVole_split_input_length_2t; F=array<u64,M>; G=u64; vector_fixed_prime_setup; local_expand"
+                : "tcp_two_process; p1_noisy_vole_sender; real_libOTe_NoisyVole_split_input_length_2t; F=array<u64,M>; G=u64; vector_fixed_prime_setup; local_expand";
+        }
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
         {
             row.notes = server
                 ? "tcp_two_process; p0_receiver; simulated_split_input_product_shares; sends_neg_B_payload_shares; vector_fixed_prime_setup; local_expand; not_secure_split_input"
@@ -1010,7 +1213,7 @@ namespace osuCrypto
                     verify = omp_get_wtime() - start;
                 }
             }
-            else if (server)
+            else if (server && setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
             {
                 auto instance = rmvoleNetBenchSampleInstance<M>(params, prng);
                 rmvoleNetBenchSendSplitInputMetadata<M>(socket, instance);
@@ -1056,7 +1259,7 @@ namespace osuCrypto
                     row.verificationOpeningBytes += rmvoleNetBenchOpeningBytes(params);
                 }
             }
-            else
+            else if (!server && setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated)
             {
                 auto instance = rmvoleNetBenchRecvSplitInputMetadata<M>(socket, params);
                 row.harnessMetadataBytes += rmvoleNetBenchSplitMetadataBytes(params);
@@ -1109,6 +1312,79 @@ namespace osuCrypto
                     verify = omp_get_wtime() - startVerify;
                 }
             }
+            else if (server)
+            {
+                auto instance = rmvoleNetBenchSampleInstance<M>(params, prng);
+                rmvoleNetBenchSendSplitInputMetadata<M>(socket, instance);
+                row.harnessMetadataBytes += rmvoleNetBenchSplitMetadataBytes(params);
+
+                ModuleMVOLEGenState<u64, CoeffCtxIntegerPrime_64> p0Gen;
+                ModuleMVOLEP0Output<u64, CoeffCtxIntegerPrime_64> p0;
+                rmvoleNetBenchBuildP0Gen<M>(p0Gen, params, instance, scalarCtx);
+
+                auto before = socket.bytesSent() + socket.bytesReceived();
+                auto shares = rmvoleNetBenchRunTcpServerNoisyVoleSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx);
+                macoro::sync_wait(socket.flush());
+                auto after = socket.bytesSent() + socket.bytesReceived();
+                row.splitInputBytes += after >= before ? after - before : 0;
+
+                before = socket.bytesSent() + socket.bytesReceived();
+                rmvoleNetBenchTcpServerSplitInputP0Pprf<M>(params, instance, shares.s, p0Gen.rowMasks, true, socket, pprfSetup, prng, vectorCtx, scalarCtx);
+                rmvoleNetBenchTcpServerSplitInputP0Pprf<M>(params, instance, shares.e, p0Gen.rowMasks, false, socket, pprfSetup, prng, vectorCtx, scalarCtx);
+                after = socket.bytesSent() + socket.bytesReceived();
+                row.pprfBytes += after >= before ? after - before : 0;
+                setup = splitInput + pprfSetup;
+
+                auto start = omp_get_wtime();
+                moduleMvoleExpandP0<u64, CoeffCtxIntegerPrime_64>(p0, rmvoleNetBenchModuleParams(params), p0Gen, scalarCtx);
+                expandP0 = omp_get_wtime() - start;
+
+                if (mode == RmvoleNetBenchMode::Verify)
+                {
+                    macoro::sync_wait(socket.send(coproto::copy(p0.x)));
+                    macoro::sync_wait(socket.send(coproto::copy(p0.Z0)));
+                    row.verificationOpeningBytes += rmvoleNetBenchOpeningBytes(params);
+                }
+            }
+            else
+            {
+                auto instance = rmvoleNetBenchRecvSplitInputMetadata<M>(socket, params);
+                row.harnessMetadataBytes += rmvoleNetBenchSplitMetadataBytes(params);
+
+                ModuleMVOLEGenState<u64, CoeffCtxIntegerPrime_64> p1Gen;
+                ModuleMVOLEP1Output<u64, CoeffCtxIntegerPrime_64> p1;
+                rmvoleNetBenchBuildP1Gen<M>(p1Gen, params, instance, scalarCtx);
+
+                auto before = socket.bytesSent() + socket.bytesReceived();
+                auto shares = rmvoleNetBenchRunTcpClientNoisyVoleSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx);
+                macoro::sync_wait(socket.flush());
+                auto after = socket.bytesSent() + socket.bytesReceived();
+                row.splitInputBytes += after >= before ? after - before : 0;
+
+                before = socket.bytesSent() + socket.bytesReceived();
+                rmvoleNetBenchTcpClientSplitInputP1Pprf<M>(params, shares.s.p1ProgrammedNeg, p1Gen.rowMasks, true, socket, pprfSetup, prng, vectorCtx, scalarCtx);
+                rmvoleNetBenchTcpClientSplitInputP1Pprf<M>(params, shares.e.p1ProgrammedNeg, p1Gen.rowMasks, false, socket, pprfSetup, prng, vectorCtx, scalarCtx);
+                after = socket.bytesSent() + socket.bytesReceived();
+                row.pprfBytes += after >= before ? after - before : 0;
+                setup = splitInput + pprfSetup;
+
+                auto start = omp_get_wtime();
+                moduleMvoleExpandP1<u64, CoeffCtxIntegerPrime_64>(p1, rmvoleNetBenchModuleParams(params), p1Gen, scalarCtx);
+                expandP1 = omp_get_wtime() - start;
+
+                if (mode == RmvoleNetBenchMode::Verify)
+                {
+                    ModuleMVOLEResult<u64, CoeffCtxIntegerPrime_64> result;
+                    result.p1 = std::move(p1);
+                    macoro::sync_wait(socket.recv(result.p0.x));
+                    macoro::sync_wait(socket.recv(result.p0.Z0));
+                    row.verificationOpeningBytes += rmvoleNetBenchOpeningBytes(params);
+
+                    auto startVerify = omp_get_wtime();
+                    ok = moduleMvoleVerify<u64, CoeffCtxIntegerPrime_64>(result, rmvoleNetBenchModuleParams(params), scalarCtx, &std::cout);
+                    verify = omp_get_wtime() - startVerify;
+                }
+            }
 
             splitTimes.push_back(splitInput);
             pprfTimes.push_back(pprfSetup);
@@ -1134,7 +1410,11 @@ namespace osuCrypto
         row.totalSocketBytes = row.bytesSentByRole + row.bytesReceivedByRole;
         auto excluded = row.harnessMetadataBytes + row.verificationOpeningBytes;
         row.cleanProtocolBytes = row.totalSocketBytes >= excluded ? row.totalSocketBytes - excluded : 0;
-        row.pprfBytes = row.cleanProtocolBytes >= row.splitInputBytes ? row.cleanProtocolBytes - row.splitInputBytes : 0;
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+        {
+            row.pprfBytes = row.cleanProtocolBytes >= row.splitInputBytes ? row.cleanProtocolBytes - row.splitInputBytes : 0;
+        }
         row.entriesPerSecond = row.totalSeconds > 0 ? static_cast<double>(row.entries) / row.totalSeconds : 0;
         row.bytesPerEntry = row.entries ? static_cast<double>(row.cleanProtocolBytes) / static_cast<double>(row.entries) : 0;
         row.ok = ok;
@@ -1239,6 +1519,54 @@ namespace osuCrypto
             << rmvoleNetBenchCsvEscape(row.notes) << '\n';
     }
 
+    inline void rmvoleNetBenchWriteSplitInputVoleCsv(const RmvoleNetBenchRow& row)
+    {
+        if (row.setupMode != "split-input-vole")
+            return;
+
+        std::filesystem::create_directories("docs");
+        auto path = std::filesystem::path("docs/rmvole_split_input_vole_benchmark.csv");
+        auto needsHeader = !std::filesystem::exists(path) || std::filesystem::file_size(path) == 0;
+        std::ofstream out(path, std::ios::app);
+        if (!out)
+            throw std::runtime_error("failed to open docs/rmvole_split_input_vole_benchmark.csv");
+        if (needsHeader)
+        {
+            out << "method,mode,setup_mode,role,network,address,logN,N,t,m,blockSize,reps,"
+                << "split_input_vole_s,split_input_vole_bytes,pprf_setup_s,pprf_bytes,"
+                << "expand_p0_s,expand_p1_s,total_s,verify_s,total_clean_bytes,"
+                << "entries,entries_per_s,bytes_per_entry,pprf_instances,default_base_ot_calls,ok,notes\n";
+        }
+        out << rmvoleNetBenchCsvEscape(row.method) << ','
+            << rmvoleNetBenchCsvEscape(row.mode) << ','
+            << rmvoleNetBenchCsvEscape(row.setupMode) << ','
+            << rmvoleNetBenchCsvEscape(row.role) << ','
+            << rmvoleNetBenchCsvEscape(row.network) << ','
+            << rmvoleNetBenchCsvEscape(row.address) << ','
+            << row.logN << ','
+            << row.N << ','
+            << row.t << ','
+            << row.m << ','
+            << row.blockSize << ','
+            << row.reps << ','
+            << std::setprecision(12) << row.splitInputSeconds << ','
+            << row.splitInputBytes << ','
+            << row.pprfSetupSeconds << ','
+            << row.pprfBytes << ','
+            << row.expandP0Seconds << ','
+            << row.expandP1Seconds << ','
+            << row.totalSeconds << ','
+            << row.verifySeconds << ','
+            << row.cleanProtocolBytes << ','
+            << row.entries << ','
+            << row.entriesPerSecond << ','
+            << row.bytesPerEntry << ','
+            << row.pprfInstances << ','
+            << row.defaultBaseOtCalls << ','
+            << (row.ok ? 1 : 0) << ','
+            << rmvoleNetBenchCsvEscape(row.notes) << '\n';
+    }
+
     inline void rmvoleNetBenchWriteNotes()
     {
         std::filesystem::create_directories("docs");
@@ -1246,6 +1574,7 @@ namespace osuCrypto
         out << "# RM-VOLE Network Setup Plus Expand Benchmark\n\n"
             << "Phase 6F adds `--RMVOLE_NET_BENCH`, a semi-honest harness that runs real vector-valued libOTe `RegularPprf` setup over coproto sockets and then performs local deterministic RM-VOLE expansion on each role.\n\n"
             << "Phase 6K adds an optional `split-input` setup mode. This mode flips the PPRF roles so that P0 is the `RegularPprfReceiver` with sparse support choices and P1 is the `RegularPprfSender` programming masked payload shares. The current Phase 6K split-input product layer is deliberately marked `split-input-simulated`: a harness helper samples additive product shares for `Delta*s_i` and `Delta*e_i` and sends P1's programmed `-B_i` shares. This verifies the wiring and accounting shape, but it is not yet a secure OT/VOLE product-sharing protocol.\n\n"
+            << "Phase 6L adds `split-input-vole`, which replaces the simulated product-share helper with real libOTe noisy VOLE over length `2t`. It instantiates `NoisyVoleReceiver<F,G,Ctx>` and `NoisyVoleSender<F,G,Ctx>` with `F = std::array<u64,M>`, `G = u64`, and `Ctx = CoeffCtxPrimeArray64<M>`. P0 owns the sparse coefficients `c=q_i` and receives `a`; P1 owns `Delta` and receives `b`; libOTe guarantees `a = b + c*Delta`. P0 uses `A=a`, P1 programs `-b`, and vector `RegularPprf` places these product shares at the sparse leaves.\n\n"
             << "## Relation\n\n"
             << "The benchmark checks the coordinate representation of `Z0 + Z1 = Delta * x`, where `x` is in `R_p`, and `Delta`, `Z0`, and `Z1` are represented as `m` base-field coordinate rows. Verification uses the existing `moduleMvoleVerify()` relation.\n\n"
             << "## Protocol Shape\n\n"
@@ -1253,27 +1582,32 @@ namespace osuCrypto
             << "- The regular PPRF domain is `domainSize = blockSize = N/t`, with `pointCount = t`.\n"
             << "- In `centralized` mode, P0 is the PPRF sender and interprets sender output as `v0 = -senderOut` and `u0 = -senderOut`; P1 is the PPRF receiver and uses `receiverOut`.\n"
             << "- In `split-input-simulated` mode, P0 is the PPRF receiver, adds its simulated product share `A_i` at selected leaves, and P1 is the PPRF sender storing `-senderOut`.\n"
+            << "- In `split-input-vole` mode, P0 first runs libOTe noisy VOLE as receiver with `c=(s_0,...,s_{t-1},e_0,...,e_{t-1})`, P1 runs as sender with `Delta`, and the resulting `a,-b` shares are fed into the same vector PPRF placement path.\n"
             << "- P0 expands locally as `x = WHT(rho*s + e)` and `Z0 = WHT(rho*v0) + WHT(u0)`.\n"
             << "- P1 expands locally as `Z1 = WHT(rho*v1) + WHT(u1)`.\n\n"
-            << "In `centralized` mode, the harness computes the full `Delta*s_i` and `Delta*e_i` payloads and gives them directly to `RegularPprfSender`. In `split-input` mode, the harness simulates shares `A_i - B_i = Delta*q_i`; P1 programs `-B_i`, P0 receives the punctured output and adds `A_i` at the selected leaf, and the reconstructed sparse payload is still `Delta*q_i`.\n\n"
+            << "In `centralized` mode, the harness computes the full `Delta*s_i` and `Delta*e_i` payloads and gives them directly to `RegularPprfSender`. In `split-input` mode, the harness simulates shares `A_i - B_i = Delta*q_i`; P1 programs `-B_i`, P0 receives the punctured output and adds `A_i` at the selected leaf. In `split-input-vole` mode, the same share shape is generated by noisy VOLE instead of the simulated helper. In all three modes, the reconstructed sparse payload is still `Delta*q_i`.\n\n"
             << "## Harness Caveat\n\n"
             << "`centralized` mode is not secure input generation. The server samples the test instance and sends the client the common rho seed, Delta coordinates, and sparse offsets needed for choices/local expansion. These bytes are reported as `harness_metadata_bytes` and excluded from `clean_protocol_bytes` in bench mode. Verify mode may also send P0 openings after timing; those bytes are reported as `verification_opening_bytes`.\n\n"
             << "`split-input-simulated` mode removes full-product PPRF programming and does not send sparse offsets to P1, but it still centrally creates product shares. The `split_input_bytes` column counts the simulated payload bytes for transferring P1's programmed product shares; in TCP mode it is payload-level accounting and does not try to split coproto framing bytes at the send boundary. It is not the cost of a secure split-input primitive. A complete semi-honest implementation still needs scalar/subfield VOLE or OT-based multiplication sharing for the `2t` sparse coefficients.\n\n"
+            << "`split-input-vole` mode uses real libOTe noisy VOLE for the product shares. Its `split_input_bytes` are measured from socket byte snapshots around the noisy VOLE call and include noisy VOLE's base OT and payload traffic. The harness still centrally samples the test instance on the server and sends `rhoSeed` and `Delta` to the client as metadata so the two-process benchmark can be orchestrated; sparse offsets and values are not sent to P1 in this mode.\n\n"
             << "## Commands\n\n"
             << "```bash\n"
             << "./build/main --RMVOLE_NET_BENCH local 12 8 8 verify\n"
             << "./build/main --RMVOLE_NET_BENCH local 12 8 8 bench\n"
             << "./build/main --RMVOLE_NET_BENCH local 12 8 8 verify split-input\n"
             << "./build/main --RMVOLE_NET_BENCH local 12 8 8 bench split-input\n"
+            << "./build/main --RMVOLE_NET_BENCH local 12 8 8 verify split-input-vole\n"
             << "./build/main --RMVOLE_NET_BENCH server 0.0.0.0 12300 12 8 8 3 bench centralized\n"
             << "./build/main --RMVOLE_NET_BENCH client 127.0.0.1 12300 12 8 8 3 bench centralized\n"
             << "./build/main --RMVOLE_NET_BENCH server 0.0.0.0 12350 12 8 8 3 bench split-input\n"
             << "./build/main --RMVOLE_NET_BENCH client 127.0.0.1 12350 12 8 8 3 bench split-input\n"
+            << "./build/main --RMVOLE_NET_BENCH server 0.0.0.0 12360 12 8 8 3 bench split-input-vole\n"
+            << "./build/main --RMVOLE_NET_BENCH client 127.0.0.1 12360 12 8 8 3 bench split-input-vole\n"
             << "```\n\n"
-            << "Results are appended to `docs/rmvole_net_benchmark.csv`. The detailed split/PPRF timing and byte breakdown is also appended to `docs/rmvole_split_input_benchmark.csv`.\n\n"
+            << "Results are appended to `docs/rmvole_net_benchmark.csv`. The detailed split/PPRF timing and byte breakdown is also appended to `docs/rmvole_split_input_benchmark.csv`. Real noisy-VOLE split-input rows are additionally written to `docs/rmvole_split_input_vole_benchmark.csv`.\n\n"
             << "## Limitations\n\n"
             << "- Semi-honest correctness/API harness only; no malicious checks.\n"
-            << "- `split-input` currently means `split-input-simulated`; secure scalar/subfield VOLE or OT multiplication sharing remains to be implemented.\n"
+            << "- `split-input-vole` is semi-honest noisy VOLE, not silent VOLE and not malicious-secure.\n"
             << "- Supported vector dimensions are fixed compile-time `m = 8, 16, 32, 64`.\n"
             << "- This reports networked setup plus local expansion, not a fully integrated production protocol.\n";
     }
@@ -1379,7 +1713,7 @@ namespace osuCrypto
         {
             if (argc != 7 && argc != 8)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole]" << std::endl;
                 return 1;
             }
 
@@ -1393,6 +1727,7 @@ namespace osuCrypto
             rmvoleNetBenchPrintRow(row);
             rmvoleNetBenchWriteCsv(row);
             rmvoleNetBenchWriteSplitInputCsv(row);
+            rmvoleNetBenchWriteSplitInputVoleCsv(row);
             return row.ok ? 0 : 1;
         }
 
@@ -1400,8 +1735,8 @@ namespace osuCrypto
         {
             if (argc != 10 && argc != 11)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input]\n"
-                          << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole]\n"
+                          << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole]" << std::endl;
                 return 1;
             }
 
@@ -1422,12 +1757,13 @@ namespace osuCrypto
             rmvoleNetBenchPrintRow(row);
             rmvoleNetBenchWriteCsv(row);
             rmvoleNetBenchWriteSplitInputCsv(row);
+            rmvoleNetBenchWriteSplitInputVoleCsv(row);
             return row.ok ? 0 : 1;
         }
 
-        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input]\n"
-                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input]\n"
-                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input]" << std::endl;
+        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole]\n"
+                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole]\n"
+                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole]" << std::endl;
         return 1;
     }
 }
