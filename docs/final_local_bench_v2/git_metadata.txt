@@ -1,0 +1,119 @@
+$ git branch --show-current
+rmvole-local-final-bench
+$ git rev-parse HEAD
+b33a10fa7851ba0c3a26bea531ffb004f00d9365
+$ git status --short
+D docs/final_local_bench/all_commands.log
+ D docs/final_local_bench/benchmark_schema.md
+ D docs/final_local_bench/build_commands.log
+ D docs/final_local_bench/communication_breakdown_raw.csv
+ D docs/final_local_bench/communication_breakdown_summary.csv
+ D docs/final_local_bench/correctness_results.csv
+ D docs/final_local_bench/direct_noisy_svole_modeled.csv
+ D docs/final_local_bench/direct_noisy_svole_raw.csv
+ D docs/final_local_bench/direct_noisy_svole_summary.csv
+ D docs/final_local_bench/environment.json
+ D docs/final_local_bench/expand_breakdown_raw.csv
+ D docs/final_local_bench/expand_breakdown_summary.csv
+ D docs/final_local_bench/figures/pprf_setup_communication_vs_m.pdf
+ D docs/final_local_bench/figures/pprf_setup_communication_vs_m.png
+ D docs/final_local_bench/figures/pprf_setup_runtime_vs_m.pdf
+ D docs/final_local_bench/figures/pprf_setup_runtime_vs_m.png
+ D docs/final_local_bench/figures/rm_vector_communication_breakdown.pdf
+ D docs/final_local_bench/figures/rm_vector_communication_breakdown.png
+ D docs/final_local_bench/figures/rm_vector_runtime_breakdown.pdf
+ D docs/final_local_bench/figures/rm_vector_runtime_breakdown.png
+ D docs/final_local_bench/figures/total_communication_vs_N.pdf
+ D docs/final_local_bench/figures/total_communication_vs_N.png
+ D docs/final_local_bench/figures/total_runtime_vs_N.pdf
+ D docs/final_local_bench/figures/total_runtime_vs_N.png
+ D docs/final_local_bench/figures/vector_pprf_improvement_vs_m.pdf
+ D docs/final_local_bench/figures/vector_pprf_improvement_vs_m.png
+ D docs/final_local_bench/git_metadata.txt
+ D docs/final_local_bench/known_limitations.md
+ D docs/final_local_bench/local_benchmark_report.md
+ D docs/final_local_bench/local_end_to_end_raw.csv
+ D docs/final_local_bench/local_end_to_end_summary.csv
+ D docs/final_local_bench/pprf_ablation_raw.csv
+ D docs/final_local_bench/pprf_ablation_summary.csv
+ D docs/final_local_bench/reproduction_commands.sh
+ D docs/final_local_bench/resource_preflight.csv
+?? docs/final_local_bench_v2/
+?? docs/pilot/
+$ git log -10 --oneline --decorate
+b33a10f (HEAD -> rmvole-local-final-bench) Fix v2 benchmark clean-start check
+9f757cb Complete local RM-VOLE v2 benchmark harness
+9f758c0 Add final local RM-VOLE benchmark artifacts
+62190c7 (rmvole-network-baselines) Add conservative RM-VOLE experiment tables
+6f9f080 Add conservative RM-VOLE split-input comparison
+997addd Add noisy VOLE split-input RM-VOLE setup
+a4490fe Add simulated split-input RM-VOLE setup mode
+93e103a Document split-input setup requirements
+decaba7 Audit silent subfield VOLE feasibility
+1ba0dc1 Add preliminary noisy subfield VOLE comparison
+$ lscpu -e=CPU,CORE,SOCKET,NODE
+CPU CORE SOCKET NODE
+  0    0      0    0
+  1    0      0    0
+  2    1      0    0
+  3    1      0    0
+  4    2      0    0
+  5    2      0    0
+  6    3      0    0
+  7    3      0    0
+  8    4      0    0
+  9    4      0    0
+ 10    5      0    0
+ 11    5      0    0
+ 12    6      0    0
+ 13    6      0    0
+ 14    7      0    0
+ 15    7      0    0
+ 16    8      0    0
+ 17    8      0    0
+ 18    9      0    0
+ 19    9      0    0
+ 20   10      0    0
+ 21   10      0    0
+ 22   11      0    0
+ 23   11      0    0
+ 24   12      0    0
+ 25   12      0    0
+ 26   13      0    0
+ 27   13      0    0
+ 28   14      0    0
+ 29   14      0    0
+ 30   15      0    0
+ 31   15      0    0
+ 32   16      1    1
+ 33   16      1    1
+ 34   17      1    1
+ 35   17      1    1
+ 36   18      1    1
+ 37   18      1    1
+ 38   19      1    1
+ 39   19      1    1
+ 40   20      1    1
+ 41   20      1    1
+ 42   21      1    1
+ 43   21      1    1
+ 44   22      1    1
+ 45   22      1    1
+ 46   23      1    1
+ 47   23      1    1
+ 48   24      1    1
+ 49   24      1    1
+ 50   25      1    1
+ 51   25      1    1
+ 52   26      1    1
+ 53   26      1    1
+ 54   27      1    1
+ 55   27      1    1
+ 56   28      1    1
+ 57   28      1    1
+ 58   29      1    1
+ 59   29      1    1
+ 60   30      1    1
+ 61   30      1    1
+ 62   31      1    1
+ 63   31      1    1

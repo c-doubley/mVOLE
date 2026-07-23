@@ -1,0 +1,2 @@
+artifact_bundle_commit: recorded in final response after committing this bundle
+note: a Git commit cannot self-contain its own final hash because the file content is part of the hash input.

@@ -1,0 +1,63 @@
+$ cmake -S . -B build-final -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/home/cyy/pcg-experiments/local
+-- The CXX compiler identification is GNU 11.5.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - found
+-- Found Threads: TRUE  
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+libOTeConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/libOTe
+cryptoToolsConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/cryptoTools
+-- SODIUM_INCLUDE_DIRS:  /home/cyy/pcg-experiments/local/include
+-- SODIUM_LIBRARIES:  /home/cyy/pcg-experiments/local/lib/libsodium.a
+-- SODIUM_MONTGOMERY:  ON
+
+coprotoConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/coproto/coprotoConfig.cmake
+find_package(macoro REQUIRED COMPONENTS cpp_20;no_pic;no_asan;Release) @ /home/cyy/pcg-experiments/local/lib/cmake/coproto/coprotoFindDeps.cmake
+macoroConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/macoro/macoroConfig.cmake
+-- Found Boost: /home/cyy/pcg-experiments/local/lib/cmake/Boost-1.86.0/BoostConfig.cmake (found suitable version "1.86.0", minimum required is "1.84.0") found components: system thread regex 
+
+
+Boost_LIB: Boost::system;Boost::thread;Boost::regex
+Boost_INC: /home/cyy/pcg-experiments/local/include
+
+
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "1.1.1f")  
+OPENSSL_INCLUDE_DIR=/usr/include
+OPENSSL_SSL_LIBRARY=/usr/lib/x86_64-linux-gnu/libssl.so
+OPENSSL_LIBRARIES  =/usr/lib/x86_64-linux-gnu/libssl.so;/usr/lib/x86_64-linux-gnu/libcrypto.so
+OPENSSL_VERSION    =1.1.1f
+-- LIBDIVIDE_INCLUDE_DIRS:  /home/cyy/pcg-experiments/local/include
+-- Configuring done (0.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/cyy/pcg-experiments/mVOLE-local-final-bench/build-final
+[exit=0 elapsed_s=0.599087]
+
+$ cmake --build build-final -j2
+[ 50%] Building CXX object CMakeFiles/main.dir/main.cpp.o
+In file included from /home/cyy/pcg-experiments/mVOLE-local-final-bench/Prime_test.h:11,
+                 from /home/cyy/pcg-experiments/mVOLE-local-final-bench/main.cpp:13:
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h: In instantiation of ‘macoro::task<> osuCrypto::RegularPrimeDpf::implExpand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, Output&&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*) [with Output = RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’:
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h:247:20:   required from ‘macoro::task<> osuCrypto::RegularPrimeDpf::expand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, Output&&, coproto::Socket&) [with Output = RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Prime_OLE.h:66:16:   required from here
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::output’ whose type depends on the type ‘RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>’ which has no linkage [-Wsubobject-linkage]
+  809 |         }
+      |         ^
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::getRow_1_2’ whose type has no linkage [-Wsubobject-linkage]
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h: In instantiation of ‘macoro::task<> osuCrypto::RegularPrimeDpf::implExpand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, Output&&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*) [with Output = RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’:
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h:247:20:   required from ‘macoro::task<> osuCrypto::RegularPrimeDpf::expand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, Output&&, coproto::Socket&) [with Output = RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Prime_OLE.h:67:16:   required from here
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::output’ whose type depends on the type ‘RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>’ which has no linkage [-Wsubobject-linkage]
+/home/cyy/pcg-experiments/mVOLE-local-final-bench/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::getRow_1_2’ whose type has no linkage [-Wsubobject-linkage]
+[100%] Linking CXX executable main
+[100%] Built target main
+[exit=0 elapsed_s=68.008032]
+

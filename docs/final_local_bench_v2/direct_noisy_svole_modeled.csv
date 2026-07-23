@@ -1,0 +1,16 @@
+benchmark_source_commit,method,logN,N,m,direct_length,base_ot_count,base_ot_protocol_invocations,predicted_socket_traffic_bytes,predicted_peak_memory_bytes,model_status,notes
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,12,4096,8,4096,512,1,134217728,134774784,MEASURED,mandatory direct point measured unless warmup/trial rows identify otherwise
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,12,4096,16,4096,1024,1,536870912,537952256,MEASURED,mandatory direct point measured unless warmup/trial rows identify otherwise
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,12,4096,32,4096,2048,1,2147483648,2149613568,MEASURED,mandatory direct point measured unless warmup/trial rows identify otherwise
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,14,16384,8,16384,512,1,536870912,539099136,MEASURED,mandatory direct point measured unless warmup/trial rows identify otherwise
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,14,16384,16,16384,1024,1,2147483648,2151809024,MEASURED,mandatory direct point measured unless warmup/trial rows identify otherwise
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,14,16384,32,16384,2048,1,8589934592,8598454272,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,16,65536,8,65536,512,1,2147483648,2156396544,MEASURED,mandatory direct point measured unless warmup/trial rows identify otherwise
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,16,65536,16,65536,1024,1,8589934592,8607236096,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,16,65536,32,65536,2048,1,34359738368,34393817088,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,18,262144,8,262144,512,1,8589934592,8625586176,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,18,262144,16,262144,1024,1,34359738368,34428944384,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,18,262144,32,262144,2048,1,137438953472,137575268352,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,20,1048576,8,1048576,512,1,34359738368,34502344704,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,20,1048576,16,1048576,1024,1,137438953472,137715777536,MODELED_ONLY,predicted direct traffic exceeds 4 GiB; modeled only
+b33a10fa7851ba0c3a26bea531ffb004f00d9365,DIRECT_NOISY_SVOLE,20,1048576,32,1048576,2048,1,549755813888,550301073408,MODELED_ONLY,predicted peak memory exceeds 70% of available RAM; modeled only

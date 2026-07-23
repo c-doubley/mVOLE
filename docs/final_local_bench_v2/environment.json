@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-07-23T08:41:33.967561+00:00",
+  "benchmark_source_commit": "b33a10fa7851ba0c3a26bea531ffb004f00d9365",
+  "p": 2305843009213693951,
+  "lambda": 128,
+  "c": 2,
+  "t": 64,
+  "cpu_model": "Intel(R) Xeon(R) Platinum 8269CY CPU T 3.10GHz",
+  "logical_core_count": 64,
+  "ram_bytes": 266190905344,
+  "os": "Ubuntu 20.04.6 LTS",
+  "kernel": "5.4.0-216-generic",
+  "compiler": "c++ (Ubuntu 11.5.0-10ubuntu1~20~ppa3) 11.5.0",
+  "cmake": "cmake version 3.27.9",
+  "selected_cpus": {
+    "p0_cpu": 0,
+    "p1_cpu": 2,
+    "p0_core": 0,
+    "p1_core": 1,
+    "socket": 0,
+    "node": 0,
+    "lscpu": "CPU CORE SOCKET NODE\n  0    0      0    0\n  1    0      0    0\n  2    1      0    0\n  3    1      0    0\n  4    2      0    0\n  5    2      0    0\n  6    3      0    0\n  7    3      0    0\n  8    4      0    0\n  9    4      0    0\n 10    5      0    0\n 11    5      0    0\n 12    6      0    0\n 13    6      0    0\n 14    7      0    0\n 15    7      0    0\n 16    8      0    0\n 17    8      0    0\n 18    9      0    0\n 19    9      0    0\n 20   10      0    0\n 21   10      0    0\n 22   11      0    0\n 23   11      0    0\n 24   12      0    0\n 25   12      0    0\n 26   13      0    0\n 27   13      0    0\n 28   14      0    0\n 29   14      0    0\n 30   15      0    0\n 31   15      0    0\n 32   16      1    1\n 33   16      1    1\n 34   17      1    1\n 35   17      1    1\n 36   18      1    1\n 37   18      1    1\n 38   19      1    1\n 39   19      1    1\n 40   20      1    1\n 41   20      1    1\n 42   21      1    1\n 43   21      1    1\n 44   22      1    1\n 45   22      1    1\n 46   23      1    1\n 47   23      1    1\n 48   24      1    1\n 49   24      1    1\n 50   25      1    1\n 51   25      1    1\n 52   26      1    1\n 53   26      1    1\n 54   27      1    1\n 55   27      1    1\n 56   28      1    1\n 57   28      1    1\n 58   29      1    1\n 59   29      1    1\n 60   30      1    1\n 61   30      1    1\n 62   31      1    1\n 63   31      1    1"
+  },
+  "numactl_available": false,
+  "taskset_available": true,
+  "pinning_command": "taskset",
+  "load_average_before_bench": [
+    1.2,
+    0.7,
+    0.48
+  ],
+  "load_average_after_bench": [
+    1.22,
+    1.55,
+    1.62
+  ],
+  "row_counts": {
+    "correctness_results": 15,
+    "end_to_end_raw": 330,
+    "communication_breakdown_raw": 330,
+    "direct_noisy_svole_raw": 60,
+    "direct_noisy_svole_modeled": 15,
+    "resource_preflight": 15
+  }
+}
