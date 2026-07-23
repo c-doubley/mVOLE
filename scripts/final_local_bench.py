@@ -722,13 +722,13 @@ def main() -> int:
     args.logns = [12] if args.quick else LOG_NS
     args.ms = [8] if args.quick else MS
     outdir = args.outdir
+    if not args.allow_dirty:
+        assert_clean(cwd)
     outdir.mkdir(parents=True, exist_ok=True)
 
     all_log = (outdir / "all_commands.log").open("w", encoding="utf-8")
     build_log = (outdir / "build_commands.log").open("w", encoding="utf-8")
     try:
-        if not args.allow_dirty:
-            assert_clean(cwd)
         commit = git(cwd, "rev-parse", "HEAD")
         cpu_info = cpu_preflight(cwd, args.p0_cpu, args.p1_cpu)
         if not args.allow_dirty:
