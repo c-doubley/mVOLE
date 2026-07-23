@@ -1,0 +1,37 @@
+$ git remote -v
+origin	git@github.com:c-doubley/mVOLE.git (fetch)
+origin	git@github.com:c-doubley/mVOLE.git (push)
+$ git branch -a
+  main
++ module-mvole
++ module-mvole-semantic-baseline
+* rmvole-local-final-bench
++ rmvole-network-baselines
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/main
+  remotes/origin/module-mvole
+  remotes/origin/module-mvole-semantic-baseline
+$ git status --short
+ M docs/final_local_bench/communication_breakdown_raw.csv
+ M docs/final_local_bench/correctness_results.csv
+ M docs/final_local_bench/direct_noisy_svole_modeled.csv
+ M docs/final_local_bench/direct_noisy_svole_raw.csv
+ M docs/final_local_bench/environment.json
+ M docs/final_local_bench/expand_breakdown_raw.csv
+ M docs/final_local_bench/git_metadata.txt
+ M docs/final_local_bench/local_end_to_end_raw.csv
+ M docs/final_local_bench/pprf_ablation_raw.csv
+ M docs/final_local_bench/resource_preflight.csv
+$ git log -10 --oneline --decorate
+92541e9 (HEAD -> rmvole-local-final-bench) Add final local RM-VOLE benchmark artifacts
+62190c7 (rmvole-network-baselines) Add conservative RM-VOLE experiment tables
+6f9f080 Add conservative RM-VOLE split-input comparison
+997addd Add noisy VOLE split-input RM-VOLE setup
+a4490fe Add simulated split-input RM-VOLE setup mode
+93e103a Document split-input setup requirements
+decaba7 Audit silent subfield VOLE feasibility
+1ba0dc1 Add preliminary noisy subfield VOLE comparison
+eaa8eb0 Add RM-VOLE network setup benchmark
+86f4785 Add vector-valued RM-VOLE PPRF setup mode
+$ git rev-parse HEAD
+92541e97835cdf7b1979ebdd41e34c666bf3206e

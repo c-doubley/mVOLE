@@ -1,0 +1,30 @@
+$ cmake -S . -B build-final -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/home/cyy/pcg-experiments/local
+libOTeConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/libOTe
+cryptoToolsConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/cryptoTools
+-- SODIUM_INCLUDE_DIRS:  /home/cyy/pcg-experiments/local/include
+-- SODIUM_LIBRARIES:  /home/cyy/pcg-experiments/local/lib/libsodium.a
+-- SODIUM_MONTGOMERY:  ON
+
+coprotoConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/coproto/coprotoConfig.cmake
+find_package(macoro REQUIRED COMPONENTS cpp_20;no_pic;no_asan;Release) @ /home/cyy/pcg-experiments/local/lib/cmake/coproto/coprotoFindDeps.cmake
+macoroConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/macoro/macoroConfig.cmake
+
+
+Boost_LIB: Boost::system;Boost::thread;Boost::regex
+Boost_INC: /home/cyy/pcg-experiments/local/include
+
+
+OPENSSL_INCLUDE_DIR=/usr/include
+OPENSSL_SSL_LIBRARY=/usr/lib/x86_64-linux-gnu/libssl.so
+OPENSSL_LIBRARIES  =/usr/lib/x86_64-linux-gnu/libssl.so;/usr/lib/x86_64-linux-gnu/libcrypto.so
+OPENSSL_VERSION    =1.1.1f
+-- LIBDIVIDE_INCLUDE_DIRS:  /home/cyy/pcg-experiments/local/include
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/cyy/pcg-experiments/mVOLE-local-final-bench/build-final
+[exit=0 elapsed_s=0.068717]
+
+$ cmake --build build-final -j2
+[100%] Built target main
+[exit=0 elapsed_s=0.077090]
+

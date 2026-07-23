@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-07-23T01:19:32.220482+00:00",
+  "cpu_model": "Intel(R) Xeon(R) Platinum 8269CY CPU T 3.10GHz",
+  "physical_core_count": 32,
+  "logical_core_count": 64,
+  "smt_topology": "CPU CORE SOCKET NODE\n  0    0      0    0\n  1    0      0    0\n  2    1      0    0\n  3    1      0    0\n  4    2      0    0\n  5    2      0    0\n  6    3      0    0\n  7    3      0    0\n  8    4      0    0\n  9    4      0    0\n 10    5      0    0\n 11    5      0    0\n 12    6      0    0\n 13    6      0    0\n 14    7      0    0\n 15    7      0    0\n 16    8      0    0\n 17    8      0    0\n 18    9      0    0\n 19    9      0    0\n 20   10      0    0\n 21   10      0    0\n 22   11      0    0\n 23   11      0    0\n 24   12      0    0\n 25   12      0    0\n 26   13      0    0\n 27   13      0    0\n 28   14      0    0\n 29   14      0    0\n 30   15      0    0\n 31   15      0    0\n 32   16      1    1\n 33   16      1    1\n 34   17      1    1\n 35   17      1    1\n 36   18      1    1\n 37   18      1    1\n 38   19      1    1\n 39   19      1    1\n 40   20      1    1\n 41   20      1    1\n 42   21      1    1\n 43   21      1    1\n 44   22      1    1\n 45   22      1    1\n 46   23      1    1\n 47   23      1    1\n 48   24      1    1\n 49   24      1    1\n 50   25      1    1\n 51   25      1    1\n 52   26      1    1\n 53   26      1    1\n 54   27      1    1\n 55   27      1    1\n 56   28      1    1\n 57   28      1    1\n 58   29      1    1\n 59   29      1    1\n 60   30      1    1\n 61   30      1    1\n 62   31      1    1\n 63   31      1    1",
+  "ram_bytes": 266190905344,
+  "os": "Ubuntu 20.04.6 LTS",
+  "kernel": "5.4.0-216-generic",
+  "compiler": "c++ (Ubuntu 11.5.0-10ubuntu1~20~ppa3) 11.5.0",
+  "cmake": "cmake version 3.27.9",
+  "release_flags": "-O3 -march=native; CMAKE_BUILD_TYPE=Release",
+  "libote_commit_or_hash": "92541e97835cdf7b1979ebdd41e34c666bf3206e",
+  "cryptotools_commit_or_hash": "92541e97835cdf7b1979ebdd41e34c666bf3206e",
+  "aes_ni": true,
+  "avx2": true,
+  "avx512": true,
+  "cpu_frequency_governor": "performance",
+  "numa_topology": "Thread(s) per core:                 2\nCore(s) per socket:                 16\nSocket(s):                          2\nNUMA node(s):                       2\nNUMA node0 CPU(s):                  0-31\nNUMA node1 CPU(s):                  32-63",
+  "process_limits": "core file size          (blocks, -c) unlimited\ndata seg size           (kbytes, -d) unlimited\nscheduling priority             (-e) 0\nfile size               (blocks, -f) unlimited\npending signals                 (-i) 1015174\nmax locked memory       (kbytes, -l) 64\nmax memory size         (kbytes, -m) unlimited\nopen files                      (-n) 1048576\npipe size            (512 bytes, -p) 8\nPOSIX message queues     (bytes, -q) 819200\nreal-time priority              (-r) 0\nstack size              (kbytes, -s) 8192\ncpu time               (seconds, -t) unlimited\nmax user processes              (-u) unlimited\nvirtual memory          (kbytes, -v) unlimited\nfile locks                      (-x) unlimited",
+  "selected_p0_core": 0,
+  "selected_p1_core": 1,
+  "selected_core_note": "Selected first two logical cores; script records topology for SMT audit.",
+  "load_average_before": [
+    0.18,
+    0.2,
+    0.16
+  ],
+  "git_commit": "92541e97835cdf7b1979ebdd41e34c666bf3206e",
+  "load_average_before_bench": [
+    0.18,
+    0.2,
+    0.16
+  ],
+  "load_average_after_bench": [
+    1.0,
+    0.51,
+    0.28
+  ]
+}
