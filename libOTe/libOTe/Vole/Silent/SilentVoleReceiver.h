@@ -539,7 +539,7 @@ namespace osuCrypto
 				 EACode encoder;
 				encoder.config(mRequestSize, mNoiseVecSize, weight);
 				 encoder.dualEncode<F,Ctx>(mA.begin(), mCtx);
-				 encoder.dualEncode<F,Ctx>(mC.begin(), mCtx);
+				 encoder.dualEncode<G,Ctx>(mC.begin(), mCtx);
 				 break;
 			}
 			case osuCrypto::MultType::ExAcc40:
@@ -548,7 +548,7 @@ namespace osuCrypto
 				 EACode encoder;
 				encoder.config(mRequestSize, mNoiseVecSize, weight);
 				 encoder.dualEncode<F,Ctx>(mA.begin(), mCtx);
-				 encoder.dualEncode<F,Ctx>(mC.begin(), mCtx);
+				 encoder.dualEncode<G,Ctx>(mC.begin(), mCtx);
 				 break;
 			}
 			case osuCrypto::MultType::QuasiCyclic:

@@ -7,6 +7,8 @@
 #include "coproto/Socket/LocalAsyncSock.h"
 #include "libOTe/Vole/Noisy/NoisyVoleReceiver.h"
 #include "libOTe/Vole/Noisy/NoisyVoleSender.h"
+#include "libOTe/Vole/Silent/SilentVoleReceiver.h"
+#include "libOTe/Vole/Silent/SilentVoleSender.h"
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
@@ -1675,7 +1677,7 @@ namespace osuCrypto
         row.bytesSentByRole = socket.bytesSent();
         row.bytesReceivedByRole = socket.bytesReceived();
         row.totalSocketBytes = row.bytesSentByRole + row.bytesReceivedByRole;
-        auto excluded = row.harnessMetadataBytes + row.verificationOpeningBytes;
+        auto excluded = (server ? row.harnessMetadataBytes : 0) + (!server ? row.verificationOpeningBytes : 0);
         row.cleanProtocolBytes = row.totalSocketBytes >= excluded ? row.totalSocketBytes - excluded : 0;
         if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated ||
             setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
@@ -1944,6 +1946,377 @@ namespace osuCrypto
         std::string notes;
     };
 
+    struct ExternalSvoleTcpRow
+    {
+        std::string tag;
+        std::string method;
+        std::string role;
+        std::string mode = "bench";
+        std::string network = "tcp-loopback";
+        std::string address;
+        u64 logN = 0;
+        u64 N = 0;
+        u64 m = 0;
+        u64 reps = 0;
+        u64 requestedN = 0;
+        u64 generatedN = 0;
+        u64 codeSize = 0;
+        u64 noiseWeight = 0;
+        u64 partitionCount = 0;
+        u64 sizePerPartition = 0;
+        u64 baseOtCount = 0;
+        u64 baseOtProtocolInvocations = 0;
+        u64 baseNoisyVoleCount = 0;
+        u64 silentExtensionCount = 0;
+        double baseCorrelationSetupSeconds = 0;
+        double silentExtensionSeconds = 0;
+        double localOutputMappingSeconds = 0;
+        double totalSeconds = 0;
+        double verifySeconds = 0;
+        u64 bytesSentByRole = 0;
+        u64 bytesReceivedByRole = 0;
+        u64 harnessMetadataBytes = 0;
+        u64 verificationOpeningBytes = 0;
+        u64 cleanProtocolBytesByRole = 0;
+        u64 directPayloadBytes = 0;
+        u64 silentBaseOtBytes = 0;
+        u64 silentBaseNoisyVoleBytes = 0;
+        u64 silentExtensionPayloadBytes = 0;
+        u64 framingBytes = 0;
+        bool ok = false;
+        std::string notes;
+    };
+
+    inline u64 rmvoleExternalSvoleDeltaBytes(u64 m)
+    {
+        return m * sizeof(u64);
+    }
+
+    inline u64 rmvoleExternalSvoleOpeningBytes(u64 N, u64 m)
+    {
+        return N * m * sizeof(u64);
+    }
+
+    template<u64 M>
+    bool rmvoleExternalSvoleVerify(
+        const typename CoeffCtxPrimeArray64<M>::template Vec<u64>& x,
+        const typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>>& a,
+        const typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>>& b,
+        const RmvolePprfPrimeVector<M>& delta,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        if (x.size() != a.size() || a.size() != b.size())
+            return false;
+        for (u64 i = 0; i < x.size(); ++i)
+        {
+            for (u64 j = 0; j < M; ++j)
+            {
+                u64 lhs{};
+                u64 z1{};
+                u64 rhs{};
+                scalarCtx.minus(z1, static_cast<u64>(0), b[i][j]);
+                scalarCtx.plus(lhs, a[i][j], z1);
+                scalarCtx.mul(rhs, x[i], delta[j]);
+                if (!scalarCtx.eq(lhs, rhs))
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    inline void rmvoleExternalSvolePrintRow(const ExternalSvoleTcpRow& row)
+    {
+        std::cout << std::fixed << std::setprecision(6)
+                  << row.tag
+                  << " method=" << row.method
+                  << " role=" << row.role
+                  << " mode=" << row.mode
+                  << " network=" << row.network
+                  << " address=" << row.address
+                  << " logN=" << row.logN
+                  << " N=" << row.N
+                  << " m=" << row.m
+                  << " reps=" << row.reps
+                  << " requested_N=" << row.requestedN
+                  << " generated_N=" << row.generatedN
+                  << " code_size=" << row.codeSize
+                  << " noise_weight=" << row.noiseWeight
+                  << " partition_count=" << row.partitionCount
+                  << " size_per_partition=" << row.sizePerPartition
+                  << " base_ot_count=" << row.baseOtCount
+                  << " base_ot_protocol_invocations=" << row.baseOtProtocolInvocations
+                  << " base_noisy_vole_count=" << row.baseNoisyVoleCount
+                  << " silent_extension_count=" << row.silentExtensionCount
+                  << " base_correlation_setup_s=" << row.baseCorrelationSetupSeconds
+                  << " silent_extension_s=" << row.silentExtensionSeconds
+                  << " local_output_mapping_s=" << row.localOutputMappingSeconds
+                  << " total_s=" << row.totalSeconds
+                  << " verify_s=" << row.verifySeconds
+                  << " bytes_sent_by_role=" << row.bytesSentByRole
+                  << " bytes_received_by_role=" << row.bytesReceivedByRole
+                  << " harness_metadata_bytes=" << row.harnessMetadataBytes
+                  << " verification_opening_bytes=" << row.verificationOpeningBytes
+                  << " clean_protocol_bytes_by_role=" << row.cleanProtocolBytesByRole
+                  << " direct_payload_bytes=" << row.directPayloadBytes
+                  << " silent_base_ot_bytes=" << row.silentBaseOtBytes
+                  << " silent_base_noisy_vole_bytes=" << row.silentBaseNoisyVoleBytes
+                  << " silent_extension_payload_bytes=" << row.silentExtensionPayloadBytes
+                  << " framing_bytes=" << row.framingBytes
+                  << " notes=" << row.notes
+                  << " " << (row.ok ? "PASS" : "FAIL")
+                  << std::endl;
+    }
+
+    template<u64 M>
+    ExternalSvoleTcpRow rmvoleDirectNoisySvoleRunTcpRoleTyped(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        u64 logN,
+        u64 reps,
+        RmvoleNetBenchMode mode)
+    {
+        using ExtElem = RmvolePprfPrimeVector<M>;
+        using ExtCtx = CoeffCtxPrimeArray64<M>;
+        using VecF = typename ExtCtx::template Vec<ExtElem>;
+        using VecG = typename ExtCtx::template Vec<u64>;
+
+        auto address = host + ":" + port;
+        auto socket = cp::asioConnect(address, server);
+        PRNG prng(sysRandomSeed());
+        ExtCtx vectorCtx;
+        CoeffCtxIntegerPrime_64 scalarCtx;
+        std::vector<double> setupTimes, verifyTimes;
+        bool ok = true;
+
+        ExternalSvoleTcpRow row;
+        row.tag = "DIRECT_NOISY_SVOLE_TCP";
+        row.method = "DIRECT_NOISY_SVOLE";
+        row.role = server ? "receiver-server-p0" : "sender-client-p1";
+        row.mode = rmvoleNetBenchModeName(mode);
+        row.network = rmvoleNetBenchTcpNetworkLabel(host);
+        row.address = address;
+        row.logN = logN;
+        row.N = rmvolePprfPow2(logN);
+        row.requestedN = row.N;
+        row.generatedN = row.N;
+        row.m = M;
+        row.reps = reps;
+        row.baseOtCount = sizeof(ExtElem) * 8;
+        row.baseOtProtocolInvocations = 1;
+        row.notes = "tcp_two_process; direct_libOTe_NoisyVole_length_N; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b";
+
+        for (u64 rep = 0; rep < reps && ok; ++rep)
+        {
+            ExtElem delta{};
+            VecG c;
+            VecF a, b;
+            vectorCtx.resize(c, row.N);
+            vectorCtx.resize(a, row.N);
+            vectorCtx.resize(b, row.N);
+
+            if (server)
+            {
+                for (u64 h = 0; h < M; ++h)
+                    scalarCtx.fromBlock(delta[h], prng.get<block>());
+                for (u64 i = 0; i < row.N; ++i)
+                    scalarCtx.fromBlock(c[i], prng.get<block>());
+                macoro::sync_wait(socket.send(coproto::copy(delta)));
+                row.harnessMetadataBytes += rmvoleExternalSvoleDeltaBytes(M);
+            }
+            else
+            {
+                macoro::sync_wait(socket.recv(delta));
+            }
+
+            NoisyVoleReceiver<ExtElem, u64, ExtCtx> receiver;
+            NoisyVoleSender<ExtElem, u64, ExtCtx> sender;
+            DefaultBaseOT baseOt;
+            auto start = omp_get_wtime();
+            if (server)
+                macoro::sync_wait(receiver.receive(c, a, prng, baseOt, socket, vectorCtx));
+            else
+                macoro::sync_wait(sender.send(delta, b, prng, baseOt, socket, vectorCtx));
+            auto setup = omp_get_wtime() - start;
+            setupTimes.push_back(setup);
+
+            if (mode == RmvoleNetBenchMode::Verify)
+            {
+                auto verifyStart = omp_get_wtime();
+                if (server)
+                {
+                    std::vector<ExtElem> wireB(row.N);
+                    macoro::sync_wait(socket.recv(wireB));
+                    vectorCtx.copy(wireB.begin(), wireB.end(), b.begin());
+                    row.verificationOpeningBytes += rmvoleExternalSvoleOpeningBytes(row.N, M);
+                    ok = rmvoleExternalSvoleVerify<M>(c, a, b, delta, scalarCtx);
+                }
+                else
+                {
+                    std::vector<ExtElem> wireB(b.begin(), b.end());
+                    macoro::sync_wait(socket.send(coproto::copy(wireB)));
+                    row.verificationOpeningBytes += rmvoleExternalSvoleOpeningBytes(row.N, M);
+                }
+                verifyTimes.push_back(omp_get_wtime() - verifyStart);
+            }
+        }
+
+        macoro::sync_wait(socket.flush());
+        row.baseCorrelationSetupSeconds = rmvoleNetBenchMedian(setupTimes);
+        row.totalSeconds = row.baseCorrelationSetupSeconds;
+        row.verifySeconds = rmvoleNetBenchMedian(verifyTimes);
+        row.bytesSentByRole = socket.bytesSent();
+        row.bytesReceivedByRole = socket.bytesReceived();
+        auto excluded = (server ? row.harnessMetadataBytes : 0) + (!server ? row.verificationOpeningBytes : 0);
+        row.cleanProtocolBytesByRole = row.bytesSentByRole >= excluded ? row.bytesSentByRole - excluded : 0;
+        row.directPayloadBytes = row.cleanProtocolBytesByRole;
+        row.ok = ok;
+        return row;
+    }
+
+    template<u64 M>
+    ExternalSvoleTcpRow rmvoleSilentSvoleRunTcpRoleTyped(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        u64 logN,
+        u64 reps,
+        RmvoleNetBenchMode mode)
+    {
+        using ExtElem = RmvolePprfPrimeVector<M>;
+        using ExtCtx = CoeffCtxPrimeArray64<M>;
+        using VecF = typename ExtCtx::template Vec<ExtElem>;
+        using VecG = typename ExtCtx::template Vec<u64>;
+
+        auto address = host + ":" + port;
+        auto socket = cp::asioConnect(address, server);
+        PRNG prng(sysRandomSeed());
+        ExtCtx vectorCtx;
+        CoeffCtxIntegerPrime_64 scalarCtx;
+        std::vector<double> baseTimes, extensionTimes, mappingTimes, totalTimes, verifyTimes;
+        bool ok = true;
+
+        ExternalSvoleTcpRow row;
+        row.tag = "SILENT_SVOLE_TCP";
+        row.method = "SILENT_SVOLE";
+        row.role = server ? "receiver-server-p0" : "sender-client-p1";
+        row.mode = rmvoleNetBenchModeName(mode);
+        row.network = rmvoleNetBenchTcpNetworkLabel(host);
+        row.address = address;
+        row.logN = logN;
+        row.N = rmvolePprfPow2(logN);
+        row.requestedN = row.N;
+        row.generatedN = row.N;
+        row.m = M;
+        row.reps = reps;
+        row.baseOtProtocolInvocations = 1;
+        row.silentExtensionCount = 1;
+        row.notes = "tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b";
+
+        for (u64 rep = 0; rep < reps && ok; ++rep)
+        {
+            ExtElem delta{};
+            VecG c;
+            VecF a, b;
+            vectorCtx.resize(c, row.N);
+            vectorCtx.resize(a, row.N);
+            vectorCtx.resize(b, row.N);
+
+            if (server)
+            {
+                for (u64 h = 0; h < M; ++h)
+                    scalarCtx.fromBlock(delta[h], prng.get<block>());
+                for (u64 i = 0; i < row.N; ++i)
+                    scalarCtx.fromBlock(c[i], prng.get<block>());
+                macoro::sync_wait(socket.send(coproto::copy(delta)));
+                row.harnessMetadataBytes += rmvoleExternalSvoleDeltaBytes(M);
+            }
+            else
+            {
+                macoro::sync_wait(socket.recv(delta));
+            }
+
+            SilentVoleReceiver<ExtElem, u64, ExtCtx> receiver;
+            SilentVoleSender<ExtElem, u64, ExtCtx> sender;
+            receiver.mMultType = MultType::ExConv7x24;
+            sender.mMultType = MultType::ExConv7x24;
+            receiver.configure(row.N, SilentBaseType::Base, 128, vectorCtx);
+            sender.configure(row.N, SilentBaseType::Base, 128, vectorCtx);
+            row.codeSize = receiver.mNoiseVecSize;
+            row.generatedN = receiver.mRequestSize;
+            row.noiseWeight = receiver.mNumPartitions;
+            row.partitionCount = receiver.mNumPartitions;
+            row.sizePerPartition = receiver.mSizePer;
+            row.baseOtCount = receiver.silentBaseOtCount();
+            row.baseNoisyVoleCount = receiver.baseVoleCount();
+
+            auto baseBefore = socket.bytesSent();
+            auto start = omp_get_wtime();
+            if (server)
+                macoro::sync_wait(receiver.genSilentBaseOts(prng, socket));
+            else
+                macoro::sync_wait(sender.genSilentBaseOts(prng, socket, delta));
+            auto baseElapsed = omp_get_wtime() - start;
+            auto baseAfter = socket.bytesSent();
+            row.silentBaseNoisyVoleBytes += baseAfter >= baseBefore ? baseAfter - baseBefore : 0;
+
+            auto extBefore = socket.bytesSent();
+            start = omp_get_wtime();
+            if (server)
+                macoro::sync_wait(receiver.silentReceive(c, a, prng, socket));
+            else
+                macoro::sync_wait(sender.silentSend(delta, b, prng, socket));
+            auto extElapsed = omp_get_wtime() - start;
+            auto extAfter = socket.bytesSent();
+            row.silentExtensionPayloadBytes += extAfter >= extBefore ? extAfter - extBefore : 0;
+
+            auto mapStart = omp_get_wtime();
+            auto mapElapsed = omp_get_wtime() - mapStart;
+
+            baseTimes.push_back(baseElapsed);
+            extensionTimes.push_back(extElapsed);
+            mappingTimes.push_back(mapElapsed);
+            totalTimes.push_back(baseElapsed + extElapsed + mapElapsed);
+
+            if (mode == RmvoleNetBenchMode::Verify)
+            {
+                auto verifyStart = omp_get_wtime();
+                if (server)
+                {
+                    std::vector<ExtElem> wireB(row.N);
+                    macoro::sync_wait(socket.recv(wireB));
+                    vectorCtx.copy(wireB.begin(), wireB.end(), b.begin());
+                    row.verificationOpeningBytes += rmvoleExternalSvoleOpeningBytes(row.N, M);
+                    ok = rmvoleExternalSvoleVerify<M>(c, a, b, delta, scalarCtx);
+                }
+                else
+                {
+                    std::vector<ExtElem> wireB(b.begin(), b.end());
+                    macoro::sync_wait(socket.send(coproto::copy(wireB)));
+                    row.verificationOpeningBytes += rmvoleExternalSvoleOpeningBytes(row.N, M);
+                }
+                verifyTimes.push_back(omp_get_wtime() - verifyStart);
+            }
+        }
+
+        macoro::sync_wait(socket.flush());
+        row.baseCorrelationSetupSeconds = rmvoleNetBenchMedian(baseTimes);
+        row.silentExtensionSeconds = rmvoleNetBenchMedian(extensionTimes);
+        row.localOutputMappingSeconds = rmvoleNetBenchMedian(mappingTimes);
+        row.totalSeconds = rmvoleNetBenchMedian(totalTimes);
+        row.verifySeconds = rmvoleNetBenchMedian(verifyTimes);
+        row.bytesSentByRole = socket.bytesSent();
+        row.bytesReceivedByRole = socket.bytesReceived();
+        auto excluded = row.harnessMetadataBytes + row.verificationOpeningBytes;
+        row.cleanProtocolBytesByRole = row.bytesSentByRole >= excluded ? row.bytesSentByRole - excluded : 0;
+        row.silentBaseOtBytes = row.baseOtCount * sizeof(block) * 2;
+        row.framingBytes = row.cleanProtocolBytesByRole >= row.silentBaseNoisyVoleBytes + row.silentExtensionPayloadBytes
+            ? row.cleanProtocolBytesByRole - row.silentBaseNoisyVoleBytes - row.silentExtensionPayloadBytes
+            : 0;
+        row.ok = ok;
+        return row;
+    }
+
     template<u64 M>
     DirectNoisySvoleRow rmvoleDirectNoisySvoleRunLocalTyped(u64 logN, RmvoleNetBenchMode mode)
     {
@@ -2034,6 +2407,50 @@ namespace osuCrypto
             return rmvoleDirectNoisySvoleRunLocalTyped<32>(logN, mode);
         default:
             throw std::runtime_error("DIRECT_NOISY_SVOLE supports m = 8, 16, 32.");
+        }
+    }
+
+    inline ExternalSvoleTcpRow rmvoleDirectNoisySvoleRunTcpRole(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        u64 logN,
+        u64 m,
+        u64 reps,
+        RmvoleNetBenchMode mode)
+    {
+        switch (m)
+        {
+        case 8:
+            return rmvoleDirectNoisySvoleRunTcpRoleTyped<8>(server, host, port, logN, reps, mode);
+        case 16:
+            return rmvoleDirectNoisySvoleRunTcpRoleTyped<16>(server, host, port, logN, reps, mode);
+        case 32:
+            return rmvoleDirectNoisySvoleRunTcpRoleTyped<32>(server, host, port, logN, reps, mode);
+        default:
+            throw std::runtime_error("DIRECT_NOISY_SVOLE TCP supports m = 8, 16, 32.");
+        }
+    }
+
+    inline ExternalSvoleTcpRow rmvoleSilentSvoleRunTcpRole(
+        bool server,
+        const std::string& host,
+        const std::string& port,
+        u64 logN,
+        u64 m,
+        u64 reps,
+        RmvoleNetBenchMode mode)
+    {
+        switch (m)
+        {
+        case 8:
+            return rmvoleSilentSvoleRunTcpRoleTyped<8>(server, host, port, logN, reps, mode);
+        case 16:
+            return rmvoleSilentSvoleRunTcpRoleTyped<16>(server, host, port, logN, reps, mode);
+        case 32:
+            return rmvoleSilentSvoleRunTcpRoleTyped<32>(server, host, port, logN, reps, mode);
+        default:
+            throw std::runtime_error("SILENT_SVOLE TCP supports m = 8, 16, 32.");
         }
     }
 
@@ -2185,6 +2602,40 @@ namespace osuCrypto
             return row.ok ? 0 : 1;
         }
 
+        if (argc >= 3 && (
+            std::string(argv[2]) == "direct-server" ||
+            std::string(argv[2]) == "direct-client" ||
+            std::string(argv[2]) == "silent-server" ||
+            std::string(argv[2]) == "silent-client"))
+        {
+            if (argc != 9)
+            {
+                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH direct-server <host_or_0.0.0.0> <port> <logN> <m> <reps> <verify|bench>\n"
+                          << "       ./build/main --RMVOLE_NET_BENCH direct-client <host> <port> <logN> <m> <reps> <verify|bench>\n"
+                          << "       ./build/main --RMVOLE_NET_BENCH silent-server <host_or_0.0.0.0> <port> <logN> <m> <reps> <verify|bench>\n"
+                          << "       ./build/main --RMVOLE_NET_BENCH silent-client <host> <port> <logN> <m> <reps> <verify|bench>" << std::endl;
+                return 1;
+            }
+
+            auto subcmd = std::string(argv[2]);
+            auto server = subcmd.find("-server") != std::string::npos;
+            auto silent = subcmd.find("silent-") == 0;
+            auto host = std::string(argv[3]);
+            auto port = std::string(argv[4]);
+            auto logN = static_cast<u64>(std::stoull(argv[5]));
+            auto m = static_cast<u64>(std::stoull(argv[6]));
+            auto reps = static_cast<u64>(std::stoull(argv[7]));
+            auto mode = rmvoleNetBenchParseMode(argv[8]);
+            if (!reps)
+                throw std::runtime_error("external sVOLE TCP mode requires reps > 0.");
+
+            auto row = silent
+                ? rmvoleSilentSvoleRunTcpRole(server, host, port, logN, m, reps, mode)
+                : rmvoleDirectNoisySvoleRunTcpRole(server, host, port, logN, m, reps, mode);
+            rmvoleExternalSvolePrintRow(row);
+            return row.ok ? 0 : 1;
+        }
+
         if (argc >= 3 && std::string(argv[2]) == "paired")
         {
             if (argc != 6)
@@ -2259,9 +2710,11 @@ namespace osuCrypto
             return row.ok ? 0 : 1;
         }
 
-        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
-                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
-                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]" << std::endl;
+	        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH direct-server|direct-client <host> <port> <logN> <m> <reps> <verify|bench>\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH silent-server|silent-client <host> <port> <logN> <m> <reps> <verify|bench>" << std::endl;
         return 1;
     }
 }
