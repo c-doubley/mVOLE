@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-07-24T02:47:15.682790+00:00",
+  "benchmark_source_commit": "562e21bc6bf16bfc32ac3e2d6f21719f28965a23",
+  "p": 2305843009213693951,
+  "lambda": 128,
+  "cpu_model": "Intel(R) Xeon(R) Platinum 8269CY CPU T 3.10GHz",
+  "logical_core_count": 64,
+  "ram_bytes": 266190905344,
+  "os": "Linux-5.4.0-216-generic-x86_64-with-glibc2.29",
+  "kernel": "5.4.0-216-generic",
+  "selected_cpus": {
+    "p0_cpu": 0,
+    "p1_cpu": 2,
+    "p0_core": 0,
+    "p1_core": 1,
+    "socket": 0,
+    "node": 0
+  },
+  "numactl_available": false,
+  "taskset_available": true
+}

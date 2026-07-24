@@ -1,0 +1,32 @@
+$ cmake -S . -B build-final -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/home/cyy/pcg-experiments/local
+[exit=0 elapsed_s=0.590978]
+
+$ cmake --build build-final -j2
+[exit=0 elapsed_s=89.436216]
+
+$ cmake -S . -B build-probes -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/home/cyy/pcg-experiments/local -DBUILD_SILENT_PROBES=ON
+[exit=0 elapsed_s=0.609924]
+
+$ cmake --build build-probes --target probe_silent_supported -j2
+[exit=0 elapsed_s=12.472135]
+
+$ /home/cyy/pcg-experiments/mVOLE-local-silent-bench/build-probes/probe_silent_supported
+[exit=0 elapsed_s=0.405413]
+
+$ cmake --build build-probes --target probe_silent_module -j2
+[exit=0 elapsed_s=16.648238]
+
+$ /home/cyy/pcg-experiments/mVOLE-local-silent-bench/build-probes/probe_silent_module
+[exit=0 elapsed_s=0.600367]
+
+$ cmake --build build-probes --target probe_silent_toy -j2
+[exit=0 elapsed_s=14.091577]
+
+$ /home/cyy/pcg-experiments/mVOLE-local-silent-bench/build-probes/probe_silent_toy
+[exit=0 elapsed_s=0.426052]
+
+$ cmake --build build-probes --target probe_silent_linearity -j2
+[exit=0 elapsed_s=8.889838]
+
+$ /home/cyy/pcg-experiments/mVOLE-local-silent-bench/build-probes/probe_silent_linearity
+[exit=0 elapsed_s=0.004320]

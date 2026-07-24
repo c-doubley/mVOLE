@@ -1,0 +1,9 @@
+## rmvole-local-silent-bench
+?? build-final/
+?? build-probes/
+
+562e21b Add local silent sVOLE benchmark harness
+479c4d3 Add final local RM-VOLE v2 artifacts
+b33a10f Fix v2 benchmark clean-start check
+9f757cb Complete local RM-VOLE v2 benchmark harness
+9f758c0 Add final local RM-VOLE benchmark artifacts

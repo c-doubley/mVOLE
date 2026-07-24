@@ -1,0 +1,11 @@
+figure_pdf,bytes,nonzero
+comparison_speedups.pdf,19908,1
+end_to_end_communication_vs_N.pdf,20013,1
+end_to_end_runtime_vs_N.pdf,20735,1
+external_baseline_communication_vs_N.pdf,22278,1
+external_baseline_runtime_vs_N.pdf,22668,1
+pprf_setup_communication_improvement.pdf,16075,1
+pprf_setup_runtime_improvement.pdf,16541,1
+rm_vector_communication_breakdown.pdf,16626,1
+rm_vector_runtime_breakdown.pdf,16857,1
+silent_svole_breakdown.pdf,17585,1

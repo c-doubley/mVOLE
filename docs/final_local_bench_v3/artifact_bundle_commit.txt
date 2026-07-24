@@ -1,0 +1,4 @@
+This file is part of the v3 artifact bundle commit. The exact Git object ID is
+content-addressed and cannot be embedded in this tracked file before the commit
+is created. Use `git rev-parse HEAD` from this artifact commit, or the final
+Codex response for the exact artifact bundle commit hash.

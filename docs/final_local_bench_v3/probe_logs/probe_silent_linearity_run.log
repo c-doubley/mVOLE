@@ -1,0 +1,2 @@
+test,M,message_size,code_size,expander_weight,accumulator_weight,ok
+ExConv_module_vs_coordinate,8,32,64,7,24,1
