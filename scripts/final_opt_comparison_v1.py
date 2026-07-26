@@ -25,7 +25,7 @@ LOCAL_METHODS = [
     {"method": "SILENT_SVOLE", "kind": "silent"},
 ]
 NETWORK_PROFILES = [
-    {"profile": "FAST", "rate": "10gbit", "loopback_rate": "20gbit", "delay": "100us", "target_bps": 10_000_000_000, "target_rtt_ms": 0.2, "rtt_max_ms": 0.5},
+    {"profile": "FAST", "rate": "10gbit", "loopback_rate": "10gbit", "delay": "100us", "target_bps": 10_000_000_000, "target_rtt_ms": 0.2, "rtt_max_ms": 0.5},
     {"profile": "WAN100", "rate": "100mbit", "loopback_rate": "140mbit", "delay": "20ms", "target_bps": 100_000_000, "target_rtt_ms": 40.0},
     {"profile": "WAN10", "rate": "10mbit", "loopback_rate": "12mbit", "delay": "20ms", "target_bps": 10_000_000, "target_rtt_ms": 40.0},
 ]
