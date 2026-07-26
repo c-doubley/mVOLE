@@ -23,7 +23,8 @@ namespace osuCrypto
     {
         GenericNoisy,
         SilentR2C,
-        CoeffOt
+        CoeffOt,
+        CoeffOtPrecomputed
     };
 
     inline SplitOptBackend splitOptParseBackend(const std::string& value)
@@ -34,7 +35,9 @@ namespace osuCrypto
             return SplitOptBackend::SilentR2C;
         if (value == "coeff-ot" || value == "SPLIT_COEFF_OT")
             return SplitOptBackend::CoeffOt;
-        throw std::runtime_error("split backend must be generic-noisy, silent-r2c, or coeff-ot.");
+        if (value == "coeff-ot-precomputed" || value == "SPLIT_COEFF_OT_PRECOMPUTED" || value == "PRECOMPUTED_BASE_OT")
+            return SplitOptBackend::CoeffOtPrecomputed;
+        throw std::runtime_error("split backend must be generic-noisy, silent-r2c, coeff-ot, or coeff-ot-precomputed.");
     }
 
     inline std::string splitOptBackendName(SplitOptBackend backend)
@@ -44,6 +47,7 @@ namespace osuCrypto
         case SplitOptBackend::GenericNoisy: return "SPLIT_GENERIC_NOISY";
         case SplitOptBackend::SilentR2C: return "SPLIT_SILENT_R2C";
         case SplitOptBackend::CoeffOt: return "SPLIT_COEFF_OT";
+        case SplitOptBackend::CoeffOtPrecomputed: return "SPLIT_COEFF_OT_PRECOMPUTED";
         }
         return "UNKNOWN";
     }
@@ -76,6 +80,13 @@ namespace osuCrypto
         u64 bytesSentByRole = 0;
         u64 bytesReceivedByRole = 0;
         u64 cleanProtocolBytesByRole = 0;
+        std::string baseOtMode;
+        u64 coeffOtEncryptedPairCount = 0;
+        u64 coeffOtEncryptedPayloadSendCalls = 0;
+        u64 coeffOtEncryptedPayloadFlushCount = 0;
+        u64 coeffOtEncryptedPayloadBytes = 0;
+        u64 coeffOtEncryptedPayloadBytesPerSend = 0;
+        u64 coeffOtProtocolRoundCount = 0;
         double baseSetupSeconds = 0;
         double extensionSeconds = 0;
         double correctionSeconds = 0;
@@ -303,8 +314,10 @@ namespace osuCrypto
             }
             else
             {
+                auto includeBaseOt = backend == SplitOptBackend::CoeffOt;
                 row.baseOtCount = gOtExtBaseOtCount;
-                row.baseOtProtocolInvocations = 1;
+                row.baseOtProtocolInvocations = includeBaseOt ? 1 : 0;
+                row.baseOtMode = includeBaseOt ? "INCLUDING_BASE_OT" : "PRECOMPUTED_BASE_OT";
                 row.extendedOtCount = OtCount;
                 row.payloadElementCount = 2 * OtCount;
 
@@ -317,12 +330,15 @@ namespace osuCrypto
                     AlignedUnVector<block> seeds(OtCount);
                     KosOtExtReceiver receiver;
                     receiver.mIsMalicious = false;
+                    if (!includeBaseOt)
+                        macoro::sync_wait(receiver.genBaseOts(prng, socket));
                     auto before = socket.bytesReceived() + socket.bytesSent();
                     auto start = omp_get_wtime();
-                    macoro::sync_wait(receiver.genBaseOts(prng, socket));
+                    if (includeBaseOt)
+                        macoro::sync_wait(receiver.genBaseOts(prng, socket));
                     auto after = socket.bytesReceived() + socket.bytesSent();
                     row.baseCorrelationBytes += after >= before ? after - before : 0;
-                    baseTimes.push_back(omp_get_wtime() - start);
+                    baseTimes.push_back(includeBaseOt ? omp_get_wtime() - start : 0);
 
                     before = socket.bytesReceived() + socket.bytesSent();
                     start = omp_get_wtime();
@@ -382,12 +398,15 @@ namespace osuCrypto
 
                     KosOtExtSender sender;
                     sender.mIsMalicious = false;
+                    if (!includeBaseOt)
+                        macoro::sync_wait(sender.genBaseOts(prng, socket));
                     auto before = socket.bytesReceived() + socket.bytesSent();
                     auto start = omp_get_wtime();
-                    macoro::sync_wait(sender.genBaseOts(prng, socket));
+                    if (includeBaseOt)
+                        macoro::sync_wait(sender.genBaseOts(prng, socket));
                     auto after = socket.bytesReceived() + socket.bytesSent();
                     row.baseCorrelationBytes += after >= before ? after - before : 0;
-                    baseTimes.push_back(omp_get_wtime() - start);
+                    baseTimes.push_back(includeBaseOt ? omp_get_wtime() - start : 0);
 
                     before = socket.bytesReceived() + socket.bytesSent();
                     start = omp_get_wtime();
@@ -397,7 +416,15 @@ namespace osuCrypto
                     after = socket.bytesReceived() + socket.bytesSent();
                     row.payloadBytes += after >= before ? after - before : 0;
                     extensionTimes.push_back(omp_get_wtime() - start);
+                    row.coeffOtEncryptedPayloadSendCalls = 1;
+                    row.coeffOtEncryptedPayloadFlushCount = 1;
+                    row.coeffOtEncryptedPayloadBytes = sizeof(std::array<ExtElem, 2>) * OtCount;
+                    row.coeffOtEncryptedPayloadBytesPerSend = row.coeffOtEncryptedPayloadBytes;
                 }
+                row.coeffOtEncryptedPairCount = OtCount;
+                if (!row.coeffOtEncryptedPayloadBytes)
+                    row.coeffOtEncryptedPayloadBytes = sizeof(std::array<ExtElem, 2>) * OtCount;
+                row.coeffOtProtocolRoundCount = includeBaseOt ? 3 : 2;
             }
 
             totalTimes.push_back(omp_get_wtime() - totalStart);
@@ -487,6 +514,13 @@ namespace osuCrypto
                   << " bytes_sent_by_role=" << row.bytesSentByRole
                   << " bytes_received_by_role=" << row.bytesReceivedByRole
                   << " clean_protocol_bytes_by_role=" << row.cleanProtocolBytesByRole
+                  << " base_ot_mode=" << row.baseOtMode
+                  << " coeff_ot_encrypted_pair_count=" << row.coeffOtEncryptedPairCount
+                  << " coeff_ot_encrypted_payload_send_calls=" << row.coeffOtEncryptedPayloadSendCalls
+                  << " coeff_ot_encrypted_payload_flush_count=" << row.coeffOtEncryptedPayloadFlushCount
+                  << " coeff_ot_encrypted_payload_bytes=" << row.coeffOtEncryptedPayloadBytes
+                  << " coeff_ot_encrypted_payload_bytes_per_send=" << row.coeffOtEncryptedPayloadBytesPerSend
+                  << " coeff_ot_protocol_round_count=" << row.coeffOtProtocolRoundCount
                   << " base_setup_s=" << std::setprecision(12) << row.baseSetupSeconds
                   << " extension_s=" << row.extensionSeconds
                   << " correction_s=" << row.correctionSeconds
@@ -502,7 +536,7 @@ namespace osuCrypto
     {
         if (argc != 9 || (std::string(argv[2]) != "server" && std::string(argv[2]) != "client"))
         {
-            std::cerr << "Usage: ./build/main --SPLIT_OPT_BENCH server|client <host> <port> <generic-noisy|silent-r2c|coeff-ot> <m> <reps> <verify|bench>" << std::endl;
+            std::cerr << "Usage: ./build/main --SPLIT_OPT_BENCH server|client <host> <port> <generic-noisy|silent-r2c|coeff-ot|coeff-ot-precomputed> <m> <reps> <verify|bench>" << std::endl;
             return 1;
         }
         auto server = std::string(argv[2]) == "server";

@@ -35,7 +35,8 @@ namespace osuCrypto
         SplitInputSimulated,
         SplitInputVole,
         SplitInputSilentR2C,
-        SplitInputCoeffOt
+        SplitInputCoeffOt,
+        SplitInputCoeffOtPrecomputed
     };
 
     enum class RmvoleNetBenchBackend
@@ -66,6 +67,8 @@ namespace osuCrypto
             return "split-input-silent-r2c";
         if (mode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
             return "split-input-coeff-ot";
+        if (mode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed)
+            return "split-input-coeff-ot-precomputed";
         return mode == RmvoleNetBenchSetupMode::SplitInputSimulated ? "split-input-simulated" : "centralized";
     }
 
@@ -81,7 +84,9 @@ namespace osuCrypto
             return RmvoleNetBenchSetupMode::SplitInputSilentR2C;
         if (value == "split-input-coeff-ot" || value == "coeff-ot" || value == "SPLIT_COEFF_OT")
             return RmvoleNetBenchSetupMode::SplitInputCoeffOt;
-        throw std::runtime_error("RMVOLE_NET_BENCH setup mode must be centralized, split-input, split-input-vole, split-input-silent-r2c, or split-input-coeff-ot.");
+        if (value == "split-input-coeff-ot-precomputed" || value == "coeff-ot-precomputed" || value == "PRECOMPUTED_BASE_OT")
+            return RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed;
+        throw std::runtime_error("RMVOLE_NET_BENCH setup mode must be centralized, split-input, split-input-vole, split-input-silent-r2c, split-input-coeff-ot, or split-input-coeff-ot-precomputed.");
     }
 
     inline std::string rmvoleNetBenchBackendName(RmvoleNetBenchBackend backend)
@@ -147,6 +152,13 @@ namespace osuCrypto
         double bytesPerEntry = 0;
         u64 pprfInstances = 2;
         u64 defaultBaseOtCalls = 2;
+        std::string splitInputBaseOtMode;
+        u64 coeffOtEncryptedPairCount = 0;
+        u64 coeffOtEncryptedPayloadSendCalls = 0;
+        u64 coeffOtEncryptedPayloadFlushCount = 0;
+        u64 coeffOtEncryptedPayloadBytes = 0;
+        u64 coeffOtEncryptedPayloadBytesPerSend = 0;
+        u64 coeffOtProtocolRoundCount = 0;
         bool ok = false;
         std::string notes;
     };
@@ -156,6 +168,17 @@ namespace osuCrypto
     {
         typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>> p0Additive;
         typename CoeffCtxPrimeArray64<M>::template Vec<RmvolePprfPrimeVector<M>> p1ProgrammedNeg;
+    };
+
+    struct RmvoleNetBenchCoeffOtInteraction
+    {
+        std::string baseOtMode = "INCLUDING_BASE_OT";
+        u64 encryptedPairCount = 0;
+        u64 encryptedPayloadSendCalls = 0;
+        u64 encryptedPayloadFlushCount = 0;
+        u64 encryptedPayloadBytes = 0;
+        u64 encryptedPayloadBytesPerSend = 0;
+        u64 protocolRoundCount = 0;
     };
 
     template<u64 M>
@@ -213,7 +236,8 @@ namespace osuCrypto
         return setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated ||
             setupMode == RmvoleNetBenchSetupMode::SplitInputVole ||
             setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C ||
-            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt;
+            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed;
     }
 
     template<typename F, typename Ctx>
@@ -661,12 +685,19 @@ namespace osuCrypto
         double& splitSeconds,
         PRNG& prng,
         CoeffCtxPrimeArray64<M>& vectorCtx,
-        CoeffCtxIntegerPrime_64& scalarCtx)
+        CoeffCtxIntegerPrime_64& scalarCtx,
+        RmvoleNetBenchCoeffOtInteraction* interaction = nullptr,
+        bool includeBaseOt = true)
     {
         using VectorF = RmvolePprfPrimeVector<M>;
         constexpr u64 BitCount = 61;
         auto L = 2 * params.t;
         auto otCount = L * BitCount;
+        KosOtExtReceiver receiver;
+        receiver.mIsMalicious = false;
+        if (!includeBaseOt)
+            macoro::sync_wait(receiver.genBaseOts(prng, socket));
+        auto splitStart = omp_get_wtime();
         auto q = rmvoleNetBenchBuildCombinedSparseCoefficients<M>(params, instance, vectorCtx);
         BitVector choices(otCount);
         for (u64 i = 0; i < L; ++i)
@@ -677,13 +708,20 @@ namespace osuCrypto
         std::vector<std::array<VectorF, 2>> encrypted(otCount);
         std::vector<VectorF> A(L);
 
-        KosOtExtReceiver receiver;
-        receiver.mIsMalicious = false;
-        auto start = omp_get_wtime();
-        macoro::sync_wait(receiver.genBaseOts(prng, socket));
+        if (includeBaseOt)
+            macoro::sync_wait(receiver.genBaseOts(prng, socket));
         macoro::sync_wait(receiver.receiveChosen(choices, seeds, prng, socket));
         macoro::sync_wait(socket.recv(encrypted));
-        splitSeconds += omp_get_wtime() - start;
+        if (interaction)
+        {
+            interaction->baseOtMode = includeBaseOt ? "INCLUDING_BASE_OT" : "PRECOMPUTED_BASE_OT";
+            interaction->encryptedPairCount = otCount;
+            interaction->encryptedPayloadSendCalls = 0;
+            interaction->encryptedPayloadFlushCount = 0;
+            interaction->encryptedPayloadBytes = sizeof(std::array<VectorF, 2>) * otCount;
+            interaction->encryptedPayloadBytesPerSend = 0;
+            interaction->protocolRoundCount = includeBaseOt ? 3 : 2;
+        }
 
         for (u64 i = 0; i < L; ++i)
         {
@@ -710,6 +748,7 @@ namespace osuCrypto
             vectorCtx.copy(out.s.p0Additive[i], A[i]);
             vectorCtx.copy(out.e.p0Additive[i], A[params.t + i]);
         }
+        splitSeconds += omp_get_wtime() - splitStart;
         return out;
     }
 
@@ -721,12 +760,19 @@ namespace osuCrypto
         double& splitSeconds,
         PRNG& prng,
         CoeffCtxPrimeArray64<M>& vectorCtx,
-        CoeffCtxIntegerPrime_64& scalarCtx)
+        CoeffCtxIntegerPrime_64& scalarCtx,
+        RmvoleNetBenchCoeffOtInteraction* interaction = nullptr,
+        bool includeBaseOt = true)
     {
         using VectorF = RmvolePprfPrimeVector<M>;
         constexpr u64 BitCount = 61;
         auto L = 2 * params.t;
         auto otCount = L * BitCount;
+        KosOtExtSender sender;
+        sender.mIsMalicious = false;
+        if (!includeBaseOt)
+            macoro::sync_wait(sender.genBaseOts(prng, socket));
+        auto splitStart = omp_get_wtime();
         std::vector<std::array<block, 2>> seedPairs(otCount);
         std::vector<std::array<VectorF, 2>> encrypted(otCount);
         std::vector<VectorF> B(L);
@@ -760,14 +806,21 @@ namespace osuCrypto
             }
         }
 
-        KosOtExtSender sender;
-        sender.mIsMalicious = false;
-        auto start = omp_get_wtime();
-        macoro::sync_wait(sender.genBaseOts(prng, socket));
+        if (includeBaseOt)
+            macoro::sync_wait(sender.genBaseOts(prng, socket));
         macoro::sync_wait(sender.sendChosen(seedPairs, prng, socket));
         macoro::sync_wait(socket.send(coproto::copy(encrypted)));
         macoro::sync_wait(socket.flush());
-        splitSeconds += omp_get_wtime() - start;
+        if (interaction)
+        {
+            interaction->baseOtMode = includeBaseOt ? "INCLUDING_BASE_OT" : "PRECOMPUTED_BASE_OT";
+            interaction->encryptedPairCount = otCount;
+            interaction->encryptedPayloadSendCalls = 1;
+            interaction->encryptedPayloadFlushCount = 1;
+            interaction->encryptedPayloadBytes = sizeof(std::array<VectorF, 2>) * otCount;
+            interaction->encryptedPayloadBytesPerSend = interaction->encryptedPayloadBytes;
+            interaction->protocolRoundCount = includeBaseOt ? 3 : 2;
+        }
 
         RmvoleNetBenchSplitSharePair<M> out;
         vectorCtx.resize(out.s.p0Additive, params.t);
@@ -784,6 +837,7 @@ namespace osuCrypto
             else
                 vectorCtx.copy(out.e.p1ProgrammedNeg[i - params.t], negB);
         }
+        splitSeconds += omp_get_wtime() - splitStart;
         return out;
     }
 
@@ -1379,10 +1433,11 @@ namespace osuCrypto
         const RmvoleNetBenchInstance<M>* fixedInstance = nullptr)
     {
         RmvoleNetBenchRow row;
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed)
             row.method = backend == RmvoleNetBenchBackend::Vector
-                ? "RM_VECTOR_OPT"
-                : "RM_COORD_OPT";
+                ? (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed ? "RM_VECTOR_OPT_PRECOMPUTED_BASE_OT" : "RM_VECTOR_OPT")
+                : (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed ? "RM_COORD_OPT_PRECOMPUTED_BASE_OT" : "RM_COORD_OPT");
         else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
             row.method = backend == RmvoleNetBenchBackend::Vector
                 ? "RM_VECTOR_SILENT_R2C_SPLIT"
@@ -1586,6 +1641,23 @@ namespace osuCrypto
         return params.N * sizeof(u64) + params.m * params.N * sizeof(u64);
     }
 
+    inline void rmvoleNetBenchSplitPhaseBarrier(cp::Socket& socket, bool server)
+    {
+        u8 marker = 0;
+        if (server)
+        {
+            macoro::sync_wait(socket.send(coproto::copy(marker)));
+            macoro::sync_wait(socket.flush());
+            macoro::sync_wait(socket.recv(marker));
+        }
+        else
+        {
+            macoro::sync_wait(socket.recv(marker));
+            macoro::sync_wait(socket.send(coproto::copy(marker)));
+            macoro::sync_wait(socket.flush());
+        }
+    }
+
     template<u64 M>
     RmvoleNetBenchRow rmvoleNetBenchRunTcpRoleTyped(
         bool server,
@@ -1606,10 +1678,11 @@ namespace osuCrypto
         bool ok = true;
 
         RmvoleNetBenchRow row;
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed)
             row.method = backend == RmvoleNetBenchBackend::Vector
-                ? "RM_VECTOR_OPT"
-                : "RM_COORD_OPT";
+                ? (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed ? "RM_VECTOR_OPT_PRECOMPUTED_BASE_OT" : "RM_VECTOR_OPT")
+                : (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed ? "RM_COORD_OPT_PRECOMPUTED_BASE_OT" : "RM_COORD_OPT");
         else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
             row.method = backend == RmvoleNetBenchBackend::Vector
                 ? "RM_VECTOR_SILENT_R2C_SPLIT"
@@ -1644,8 +1717,12 @@ namespace osuCrypto
         row.entries = params.m * params.N;
         row.pprfInstances = rmvoleNetBenchPprfInstances(params, backend);
         row.defaultBaseOtCalls = row.pprfInstances;
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed)
         {
+            row.splitInputBaseOtMode = setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed
+                ? "PRECOMPUTED_BASE_OT"
+                : "INCLUDING_BASE_OT";
             row.notes = server
                 ? (backend == RmvoleNetBenchBackend::Vector
                     ? "tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand"
@@ -1653,6 +1730,8 @@ namespace osuCrypto
                 : (backend == RmvoleNetBenchBackend::Vector
                     ? "tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand"
                     : "tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; coordinate_scalar_fixed_prime_setup; local_expand");
+            if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed)
+                row.notes += "; PRECOMPUTED_BASE_OT diagnostic";
         }
         else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
         {
@@ -1886,10 +1965,25 @@ namespace osuCrypto
                 ModuleMVOLEP0Output<u64, CoeffCtxIntegerPrime_64> p0;
                 rmvoleNetBenchBuildP0Gen<M>(p0Gen, params, instance, scalarCtx);
 
+                rmvoleNetBenchSplitPhaseBarrier(socket, server);
+                row.harnessMetadataBytes += 2;
                 auto before = socket.bytesSent() + socket.bytesReceived();
                 RmvoleNetBenchSplitSharePair<M> shares;
-                if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
-                    shares = rmvoleNetBenchRunTcpServerCoeffOtSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
+                if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt ||
+                    setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed)
+                {
+                    RmvoleNetBenchCoeffOtInteraction interaction;
+                    shares = rmvoleNetBenchRunTcpServerCoeffOtSplitInput<M>(
+                        params, instance, socket, splitInput, prng, vectorCtx, scalarCtx,
+                        &interaction, setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt);
+                    row.splitInputBaseOtMode = interaction.baseOtMode;
+                    row.coeffOtEncryptedPairCount = interaction.encryptedPairCount;
+                    row.coeffOtEncryptedPayloadSendCalls = interaction.encryptedPayloadSendCalls;
+                    row.coeffOtEncryptedPayloadFlushCount = interaction.encryptedPayloadFlushCount;
+                    row.coeffOtEncryptedPayloadBytes = interaction.encryptedPayloadBytes;
+                    row.coeffOtEncryptedPayloadBytesPerSend = interaction.encryptedPayloadBytesPerSend;
+                    row.coeffOtProtocolRoundCount = interaction.protocolRoundCount;
+                }
                 else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
                     shares = rmvoleNetBenchRunTcpServerSilentR2CSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
                 else
@@ -1933,10 +2027,24 @@ namespace osuCrypto
                 ModuleMVOLEP1Output<u64, CoeffCtxIntegerPrime_64> p1;
                 rmvoleNetBenchBuildP1Gen<M>(p1Gen, params, instance, scalarCtx);
 
+                rmvoleNetBenchSplitPhaseBarrier(socket, server);
                 auto before = socket.bytesSent() + socket.bytesReceived();
                 RmvoleNetBenchSplitSharePair<M> shares;
-                if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
-                    shares = rmvoleNetBenchRunTcpClientCoeffOtSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
+                if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt ||
+                    setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOtPrecomputed)
+                {
+                    RmvoleNetBenchCoeffOtInteraction interaction;
+                    shares = rmvoleNetBenchRunTcpClientCoeffOtSplitInput<M>(
+                        params, instance, socket, splitInput, prng, vectorCtx, scalarCtx,
+                        &interaction, setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt);
+                    row.splitInputBaseOtMode = interaction.baseOtMode;
+                    row.coeffOtEncryptedPairCount = interaction.encryptedPairCount;
+                    row.coeffOtEncryptedPayloadSendCalls = interaction.encryptedPayloadSendCalls;
+                    row.coeffOtEncryptedPayloadFlushCount = interaction.encryptedPayloadFlushCount;
+                    row.coeffOtEncryptedPayloadBytes = interaction.encryptedPayloadBytes;
+                    row.coeffOtEncryptedPayloadBytesPerSend = interaction.encryptedPayloadBytesPerSend;
+                    row.coeffOtProtocolRoundCount = interaction.protocolRoundCount;
+                }
                 else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
                     shares = rmvoleNetBenchRunTcpClientSilentR2CSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
                 else
@@ -2030,7 +2138,10 @@ namespace osuCrypto
             out << "method,mode,setup_mode,backend,role,network,address,logN,N,t,m,blockSize,reps,"
                 << "setup_s,expand_p0_s,expand_p1_s,total_s,verify_s,"
                 << "bytes_sent_by_role,bytes_received_by_role,total_socket_bytes,harness_metadata_bytes,verification_opening_bytes,clean_protocol_bytes,"
-                << "entries,entries_per_s,bytes_per_entry,pprf_instances,default_base_ot_calls,ok,notes\n";
+                << "entries,entries_per_s,bytes_per_entry,pprf_instances,default_base_ot_calls,"
+                << "split_input_base_ot_mode,coeff_ot_encrypted_pair_count,coeff_ot_encrypted_payload_send_calls,"
+                << "coeff_ot_encrypted_payload_flush_count,coeff_ot_encrypted_payload_bytes,"
+                << "coeff_ot_encrypted_payload_bytes_per_send,coeff_ot_protocol_round_count,ok,notes\n";
         }
         out << rmvoleNetBenchCsvEscape(row.method) << ','
             << rmvoleNetBenchCsvEscape(row.mode) << ','
@@ -2061,6 +2172,13 @@ namespace osuCrypto
             << row.bytesPerEntry << ','
             << row.pprfInstances << ','
             << row.defaultBaseOtCalls << ','
+            << rmvoleNetBenchCsvEscape(row.splitInputBaseOtMode) << ','
+            << row.coeffOtEncryptedPairCount << ','
+            << row.coeffOtEncryptedPayloadSendCalls << ','
+            << row.coeffOtEncryptedPayloadFlushCount << ','
+            << row.coeffOtEncryptedPayloadBytes << ','
+            << row.coeffOtEncryptedPayloadBytesPerSend << ','
+            << row.coeffOtProtocolRoundCount << ','
             << (row.ok ? 1 : 0) << ','
             << rmvoleNetBenchCsvEscape(row.notes) << '\n';
     }
@@ -2079,7 +2197,10 @@ namespace osuCrypto
                 << "split_input_s,pprf_setup_s,setup_s,expand_p0_s,expand_p1_s,total_s,verify_s,"
                 << "bytes_sent_by_role,bytes_received_by_role,total_socket_bytes,harness_metadata_bytes,verification_opening_bytes,"
                 << "split_input_bytes,pprf_bytes,total_clean_bytes,entries,entries_per_s,bytes_per_entry,"
-                << "pprf_instances,default_base_ot_calls,ok,notes\n";
+                << "pprf_instances,default_base_ot_calls,split_input_base_ot_mode,"
+                << "coeff_ot_encrypted_pair_count,coeff_ot_encrypted_payload_send_calls,"
+                << "coeff_ot_encrypted_payload_flush_count,coeff_ot_encrypted_payload_bytes,"
+                << "coeff_ot_encrypted_payload_bytes_per_send,coeff_ot_protocol_round_count,ok,notes\n";
         }
         out << rmvoleNetBenchCsvEscape(row.method) << ','
             << rmvoleNetBenchCsvEscape(row.mode) << ','
@@ -2114,6 +2235,13 @@ namespace osuCrypto
             << row.bytesPerEntry << ','
             << row.pprfInstances << ','
             << row.defaultBaseOtCalls << ','
+            << rmvoleNetBenchCsvEscape(row.splitInputBaseOtMode) << ','
+            << row.coeffOtEncryptedPairCount << ','
+            << row.coeffOtEncryptedPayloadSendCalls << ','
+            << row.coeffOtEncryptedPayloadFlushCount << ','
+            << row.coeffOtEncryptedPayloadBytes << ','
+            << row.coeffOtEncryptedPayloadBytesPerSend << ','
+            << row.coeffOtProtocolRoundCount << ','
             << (row.ok ? 1 : 0) << ','
             << rmvoleNetBenchCsvEscape(row.notes) << '\n';
     }
@@ -2248,6 +2376,13 @@ namespace osuCrypto
                   << " bytes_per_entry=" << row.bytesPerEntry
                   << " pprf_instances=" << row.pprfInstances
                   << " default_base_ot_calls=" << row.defaultBaseOtCalls
+                  << " split_input_base_ot_mode=" << row.splitInputBaseOtMode
+                  << " coeff_ot_encrypted_pair_count=" << row.coeffOtEncryptedPairCount
+                  << " coeff_ot_encrypted_payload_send_calls=" << row.coeffOtEncryptedPayloadSendCalls
+                  << " coeff_ot_encrypted_payload_flush_count=" << row.coeffOtEncryptedPayloadFlushCount
+                  << " coeff_ot_encrypted_payload_bytes=" << row.coeffOtEncryptedPayloadBytes
+                  << " coeff_ot_encrypted_payload_bytes_per_send=" << row.coeffOtEncryptedPayloadBytesPerSend
+                  << " coeff_ot_protocol_round_count=" << row.coeffOtProtocolRoundCount
                   << " notes=" << row.notes
                   << " " << (row.ok ? "PASS" : "FAIL")
                   << std::endl;
@@ -2983,7 +3118,7 @@ namespace osuCrypto
         {
             if (argc != 7 && argc != 8 && argc != 9)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot|split-input-coeff-ot-precomputed] [vector|coordinate]" << std::endl;
                 return 1;
             }
 
@@ -3008,8 +3143,8 @@ namespace osuCrypto
         {
             if (argc != 10 && argc != 11 && argc != 12)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
-                          << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot|split-input-coeff-ot-precomputed] [vector|coordinate]\n"
+                          << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot|split-input-coeff-ot-precomputed] [vector|coordinate]" << std::endl;
                 return 1;
             }
 
@@ -3037,9 +3172,9 @@ namespace osuCrypto
             return row.ok ? 0 : 1;
         }
 
-	        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
-	                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
-	                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
+	        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot|split-input-coeff-ot-precomputed] [vector|coordinate]\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot|split-input-coeff-ot-precomputed] [vector|coordinate]\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot|split-input-coeff-ot-precomputed] [vector|coordinate]\n"
 	                  << "       ./build/main --RMVOLE_NET_BENCH direct-server|direct-client <host> <port> <logN> <m> <reps> <verify|bench>\n"
 	                  << "       ./build/main --RMVOLE_NET_BENCH silent-server|silent-client <host> <port> <logN> <m> <reps> <verify|bench>" << std::endl;
         return 1;

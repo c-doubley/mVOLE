@@ -21,6 +21,7 @@
 #include "RmvolePprfNetSetupTest.h"
 #include "RmvoleNetBench.h"
 #include "SplitOptNetworkBench.h"
+#include "FinalOptComparisonBench.h"
 //#define trial 2
 //#define num_thread 1
 using namespace osuCrypto;
@@ -45,6 +46,7 @@ void printUsage() {
     printf("  --RMVOLE_PPRF_NET_SETUP\tTests RM-VOLE setup PPRF layer over local coproto sockets.\n");
     printf("  --RMVOLE_NET_BENCH\tBenchmarks networked RM-VOLE setup plus local expansion.\n");
     printf("  --SPLIT_OPT_BENCH\tBenchmarks split-input product-sharing backends.\n");
+    printf("  --ENCODER_ONLY_BENCH\tBenchmarks encoder-only WHT and ExConv7x24 components.\n");
 }
 
 int main(int argc, char **argv)
@@ -65,6 +67,9 @@ int main(int argc, char **argv)
         }
         if (strcmp(argv[1], "--SPLIT_OPT_BENCH") ==0) {
             return SplitOptNetworkBench(argc, argv);
+        }
+        if (strcmp(argv[1], "--ENCODER_ONLY_BENCH") ==0) {
+            return EncoderOnlyBench(argc, argv);
         }
 
         u64 num_var=std::atoi(argv[2]);
