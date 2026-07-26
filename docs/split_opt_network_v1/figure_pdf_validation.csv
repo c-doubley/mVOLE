@@ -1,0 +1,7 @@
+file,exists,size_bytes,pdf_header_ok,status
+figures/local_expansion.pdf,1,15573,1,OK
+figures/network_runtime.pdf,1,15125,1,OK
+figures/rm_opt_comm.pdf,1,18995,1,OK
+figures/rm_opt_runtime.pdf,1,17845,1,OK
+figures/split_backend_comm.pdf,1,15775,1,OK
+figures/split_backend_runtime.pdf,1,14696,1,OK

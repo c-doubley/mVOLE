@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-07-26T06:16:00.265987+00:00",
+  "benchmark_source_commit": "4a917afb6ebeca9bce885fae7f25d0ac0264ecb6",
+  "p": 2305843009213693951,
+  "lambda": 128,
+  "c": 2,
+  "t": 64,
+  "L": 128,
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.29",
+  "cpu_count": 64,
+  "iperf3_available": true
+}

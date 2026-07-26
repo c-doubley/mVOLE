@@ -1,0 +1,4 @@
+profile,status,topology,notes
+LAN10G,OK,loopback_tc,loopback_tc profile target_rate=10gbit configured_tc_rate=10gbit one_way_delay=50us trials=3
+WAN100,OK,loopback_tc,loopback_tc profile target_rate=100mbit configured_tc_rate=140mbit one_way_delay=25ms trials=3
+WAN10,OK,loopback_tc,loopback_tc profile target_rate=10mbit configured_tc_rate=14mbit one_way_delay=50ms trials=3

@@ -1,0 +1,4 @@
+timestamp,profile,topology,target_profile_rate,configured_tc_rate,one_way_delay,target_rtt_ms,target_bits_per_second,measured_bits_per_second,ratio_to_target,within_15pct,status
+2026-07-26T06:10:24.738783+00:00,LAN10G,loopback_tc,10gbit,10gbit,50us,0.1,10000000000,9979716100.45627,0.9979716100456271,1,OK
+2026-07-26T06:10:49.637901+00:00,WAN100,loopback_tc,100mbit,140mbit,25ms,50.0,100000000,106786361.82388574,1.0678636182388574,1,OK
+2026-07-26T06:12:10.133078+00:00,WAN10,loopback_tc,10mbit,14mbit,50ms,100.0,10000000,10924659.964861011,1.0924659964861012,1,OK
