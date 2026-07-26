@@ -101,6 +101,24 @@ def write_csv(path, rows):
         writer.writerows(rows)
 
 
+def ephemeral_port_range():
+    path = Path("/proc/sys/net/ipv4/ip_local_port_range")
+    if not path.exists():
+        return 32768, 60999
+    parts = path.read_text(encoding="utf-8").split()
+    if len(parts) != 2:
+        return 32768, 60999
+    return int(parts[0]), int(parts[1])
+
+
+def normalize_start_port(port):
+    low, high = ephemeral_port_range()
+    max_pairs = 1200
+    if port <= 1024 or (port <= high and port + max_pairs >= low):
+        return 12000
+    return port
+
+
 def read_csv(path):
     if not path.exists():
         return []
@@ -690,7 +708,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("--skip-network", action="store_true")
-    parser.add_argument("--start-port", type=int, default=24000)
+    parser.add_argument("--start-port", type=int, default=12000)
     args = parser.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -699,7 +717,7 @@ def main():
         build(log)
         write_environment(source_commit)
         encoder_rows = run_encoder(source_commit, log)
-        port, split_rows = run_split_coeff(source_commit, log, args.start_port)
+        port, split_rows = run_split_coeff(source_commit, log, normalize_start_port(args.start_port))
         port, local_rows = run_local(source_commit, log, port, quick=args.quick)
         network_rows = []
         if not args.skip_network:
