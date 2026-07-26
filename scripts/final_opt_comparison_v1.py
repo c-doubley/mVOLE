@@ -25,9 +25,9 @@ LOCAL_METHODS = [
     {"method": "SILENT_SVOLE", "kind": "silent"},
 ]
 NETWORK_PROFILES = [
-    {"profile": "FAST", "rate": "10gbit", "delay": "100us", "target_bps": 10_000_000_000, "target_rtt_ms": 0.2, "rtt_max_ms": 0.5},
-    {"profile": "WAN100", "rate": "100mbit", "delay": "20ms", "target_bps": 100_000_000, "target_rtt_ms": 40.0},
-    {"profile": "WAN10", "rate": "10mbit", "delay": "20ms", "target_bps": 10_000_000, "target_rtt_ms": 40.0},
+    {"profile": "FAST", "rate": "10gbit", "loopback_rate": "20gbit", "delay": "100us", "target_bps": 10_000_000_000, "target_rtt_ms": 0.2, "rtt_max_ms": 0.5},
+    {"profile": "WAN100", "rate": "100mbit", "loopback_rate": "140mbit", "delay": "20ms", "target_bps": 100_000_000, "target_rtt_ms": 40.0},
+    {"profile": "WAN10", "rate": "10mbit", "loopback_rate": "12mbit", "delay": "20ms", "target_bps": 10_000_000, "target_rtt_ms": 40.0},
 ]
 NETWORK_GRID = {
     "FAST": {"logN": [14, 16, 18, 20], "m": [8, 16, 32], "trials": 10},
@@ -370,7 +370,7 @@ def tc_cleanup(log):
 
 def tc_setup(profile, log):
     tc_cleanup(log)
-    cp = run(["tc", "qdisc", "replace", "dev", "lo", "root", "netem", "rate", profile["rate"], "delay", profile["delay"]],
+    cp = run(["tc", "qdisc", "replace", "dev", "lo", "root", "netem", "rate", profile.get("loopback_rate", profile["rate"]), "delay", profile["delay"]],
              ROOT, log, timeout=20)
     if cp.returncode:
         raise RuntimeError(f"tc setup failed: {cp.stdout.strip()}")
@@ -399,25 +399,31 @@ def ping20(profile, log):
 
 
 def iperf_bidir(port, log):
-    server = subprocess.Popen(["iperf3", "-s", "-1", "-p", str(port)], cwd=ROOT,
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    time.sleep(0.3)
-    client = run(["iperf3", "-c", "127.0.0.1", "-p", port, "-t", "2", "--bidir", "-J"], ROOT, log, timeout=40)
-    try:
-        server_out, _ = server.communicate(timeout=5)
-    except subprocess.TimeoutExpired:
-        kill_process(server)
-        server_out, _ = server.communicate()
-    log.write(server_out)
-    log.write(f"[iperf_server_exit={server.returncode}]\n\n")
-    log.flush()
-    if client.returncode or server.returncode:
-        raise RuntimeError("iperf3 bidirectional calibration failed")
-    data = json.loads(client.stdout)
-    end = data.get("end", {})
-    sent = float(end.get("sum_sent", {}).get("bits_per_second", 0))
-    received = float(end.get("sum_received", {}).get("bits_per_second", 0))
-    return sent, received
+    values = []
+    for reverse in (False, True):
+        server_cmd = ["iperf3", "-s", "-1", "-p", str(port)]
+        client_cmd = ["iperf3", "-c", "127.0.0.1", "-p", str(port), "-t", "2", "-J"]
+        if reverse:
+            client_cmd.append("-R")
+        log.write("$ " + " ".join(server_cmd) + " &\n")
+        server = subprocess.Popen(server_cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        time.sleep(0.3)
+        client = run(client_cmd, ROOT, log, timeout=40)
+        try:
+            server_out, _ = server.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            kill_process(server)
+            server_out, _ = server.communicate()
+        log.write(server_out)
+        log.write(f"[iperf_server_exit={server.returncode} direction={'reverse' if reverse else 'forward'}]\n\n")
+        log.flush()
+        if client.returncode or server.returncode:
+            raise RuntimeError("iperf3 bidirectional calibration failed")
+        data = json.loads(client.stdout)
+        end = data.get("end", {})
+        values.append(float(end.get("sum_received", {}).get("bits_per_second", 0) or end.get("sum_sent", {}).get("bits_per_second", 0)))
+        port += 1
+    return values[0], values[1]
 
 
 def run_network(source_commit, log, start_port, quick=False):
@@ -484,6 +490,7 @@ def run_network(source_commit, log, start_port, quick=False):
         "profile": p["profile"],
         "network_label": "emulated TCP network",
         "rate": p["rate"],
+        "configured_loopback_tc_rate": p.get("loopback_rate", p["rate"]),
         "one_way_delay": p["delay"],
         "target_rtt_ms": p["target_rtt_ms"],
         "target_bits_per_second": p["target_bps"],
