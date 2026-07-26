@@ -1,0 +1,11 @@
+file,status
+figures/local_runtime_m8.pdf,OK
+figures/local_runtime_m8.png,OK
+figures/local_runtime_m16.pdf,OK
+figures/local_runtime_m16.png,OK
+figures/local_runtime_m32.pdf,OK
+figures/local_runtime_m32.png,OK
+figures/encoder_only_m16.pdf,OK
+figures/encoder_only_m16.png,OK
+figures/network_runtime_log18_m16.pdf,OK
+figures/network_runtime_log18_m16.png,OK

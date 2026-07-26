@@ -1,0 +1,30 @@
+\section{Batched Bit-Decomposition OT Split-Input Multiplication}
+
+This backend is a standard batched bit-decomposition OT multiplication backend for producing additive shares of products \(q_i \Delta\), where \(q_i \in \mathbb{F}_p\) is held by \(P_0\) and \(\Delta \in \mathbb{F}_p^m\) is held by \(P_1\). The benchmark uses \(p=2^{61}-1\), \(L=2t=128\), and \(61L=7808\) one-out-of-two OT messages in one batch.
+
+\paragraph{Protocol.}
+For each coefficient \(q_i\) and bit position \(k\), \(P_1\) samples a random vector \(r_{i,k}\in\mathbb{F}_p^m\). It defines OT messages
+\[
+M^0_{i,k}=r_{i,k},\qquad M^1_{i,k}=r_{i,k}+2^k\Delta.
+\]
+The messages are one-time padded using seeds delivered by a semi-honest chosen-message OT extension. \(P_0\) uses the bit \(q_{i,k}\) as its OT choice, decrypts \(M^{q_{i,k}}_{i,k}\), and sets
+\[
+A_i=\sum_k M^{q_{i,k}}_{i,k}.
+\]
+\(P_1\) sets \(B_i=-\sum_k r_{i,k}\). The shares \(A_i\) and \(B_i\) are then inserted into the split-input regular-PPRF backend.
+
+\paragraph{Correctness.}
+For every \(i\),
+\[
+A_i+B_i
+=\sum_k \left(r_{i,k}+q_{i,k}2^k\Delta\right)-\sum_k r_{i,k}
+=\left(\sum_k q_{i,k}2^k\right)\Delta
+=q_i\Delta.
+\]
+Thus the reconstructed sparse PPRF payload is the same product that a centralized generator would have programmed.
+
+\paragraph{Semi-Honest OT-Hybrid Security.}
+In the OT-hybrid model, \(P_0\) receives exactly one of the two messages for each bit and learns no information about the unchosen branch beyond what follows from its output share. Each chosen message is masked by an OT-derived seed, and the encrypted message pairs are sent as one contiguous payload in the implementation. \(P_1\)'s view consists of its input \(\Delta\), its random masks, and OT sender state; OT privacy hides \(P_0\)'s choice bits. The simulated view for \(P_0\) samples additive shares consistent with \(q_i\Delta\), and the simulated view for \(P_1\) samples the same random masks and OT sender transcript. Therefore, against semi-honest parties, the backend realizes multiplication sharing in the OT-hybrid model.
+
+\paragraph{Complexity.}
+For \(L\) coefficients represented with \(\ell=\lceil\log_2 p\rceil=61\) bits and extension dimension \(m\), the backend uses \(L\ell\) OTs and sends \(2L\ell\) encrypted \(\mathbb{F}_p^m\) messages after OT extension setup. Computation is \(O(L\ell m)\) field additions plus OT-extension work, and communication is \(O(L\ell m\log p)\) bits for the encrypted payload, plus the OT-extension/base-OT traffic. In the measured configuration, \(L\ell=7808\) and the encrypted pair payload is serialized as a single large sender payload.

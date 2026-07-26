@@ -1,0 +1,4 @@
+profile,network_label,rate,configured_loopback_tc_rate,one_way_delay,target_rtt_ms,target_bits_per_second
+FAST,emulated TCP network,10gbit,10gbit,100us,0.2,10000000000
+WAN100,emulated TCP network,100mbit,140mbit,20ms,40.0,100000000
+WAN10,emulated TCP network,10mbit,12mbit,20ms,40.0,10000000
