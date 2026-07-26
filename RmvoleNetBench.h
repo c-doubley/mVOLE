@@ -7,6 +7,8 @@
 #include "coproto/Socket/LocalAsyncSock.h"
 #include "libOTe/Vole/Noisy/NoisyVoleReceiver.h"
 #include "libOTe/Vole/Noisy/NoisyVoleSender.h"
+#include "libOTe/TwoChooseOne/Kos/KosOtExtReceiver.h"
+#include "libOTe/TwoChooseOne/Kos/KosOtExtSender.h"
 #include "libOTe/Vole/Silent/SilentVoleReceiver.h"
 #include "libOTe/Vole/Silent/SilentVoleSender.h"
 #include <algorithm>
@@ -31,7 +33,9 @@ namespace osuCrypto
     {
         Centralized,
         SplitInputSimulated,
-        SplitInputVole
+        SplitInputVole,
+        SplitInputSilentR2C,
+        SplitInputCoeffOt
     };
 
     enum class RmvoleNetBenchBackend
@@ -58,6 +62,10 @@ namespace osuCrypto
     {
         if (mode == RmvoleNetBenchSetupMode::SplitInputVole)
             return "split-input-vole";
+        if (mode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
+            return "split-input-silent-r2c";
+        if (mode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+            return "split-input-coeff-ot";
         return mode == RmvoleNetBenchSetupMode::SplitInputSimulated ? "split-input-simulated" : "centralized";
     }
 
@@ -69,7 +77,11 @@ namespace osuCrypto
             return RmvoleNetBenchSetupMode::SplitInputSimulated;
         if (value == "split-input-vole" || value == "vole")
             return RmvoleNetBenchSetupMode::SplitInputVole;
-        throw std::runtime_error("RMVOLE_NET_BENCH setup mode must be centralized, split-input, or split-input-vole.");
+        if (value == "split-input-silent-r2c" || value == "silent-r2c" || value == "SPLIT_SILENT_R2C")
+            return RmvoleNetBenchSetupMode::SplitInputSilentR2C;
+        if (value == "split-input-coeff-ot" || value == "coeff-ot" || value == "SPLIT_COEFF_OT")
+            return RmvoleNetBenchSetupMode::SplitInputCoeffOt;
+        throw std::runtime_error("RMVOLE_NET_BENCH setup mode must be centralized, split-input, split-input-vole, split-input-silent-r2c, or split-input-coeff-ot.");
     }
 
     inline std::string rmvoleNetBenchBackendName(RmvoleNetBenchBackend backend)
@@ -199,7 +211,9 @@ namespace osuCrypto
     inline bool rmvoleNetBenchUsesSplitInput(RmvoleNetBenchSetupMode setupMode)
     {
         return setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated ||
-            setupMode == RmvoleNetBenchSetupMode::SplitInputVole;
+            setupMode == RmvoleNetBenchSetupMode::SplitInputVole ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt;
     }
 
     template<typename F, typename Ctx>
@@ -512,6 +526,263 @@ namespace osuCrypto
         {
             vectorCtx.minus(out.s.p1ProgrammedNeg[i], VectorF{}, b[i]);
             vectorCtx.minus(out.e.p1ProgrammedNeg[i], VectorF{}, b[params.t + i]);
+        }
+        return out;
+    }
+
+    template<u64 M>
+    void rmvoleNetBenchMulDeltaScalar(
+        RmvolePprfPrimeVector<M>& out,
+        const RmvolePprfPrimeVector<M>& delta,
+        u64 scalar,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        for (u64 h = 0; h < M; ++h)
+            scalarCtx.mul(out[h], delta[h], scalar);
+    }
+
+    inline void rmvoleNetBenchXorBytes(u8* dst, const u8* src, u64 size)
+    {
+        for (u64 i = 0; i < size; ++i)
+            dst[i] ^= src[i];
+    }
+
+    template<typename T>
+    T rmvoleNetBenchPadValue(block seed, u64 otIndex, u64 branch)
+    {
+        T out{};
+        PRNG prng(seed ^ block(otIndex, branch));
+        prng.get(reinterpret_cast<u8*>(&out), sizeof(T));
+        return out;
+    }
+
+    template<u64 M>
+    RmvoleNetBenchSplitSharePair<M> rmvoleNetBenchRunTcpServerSilentR2CSplitInput(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        cp::Socket& socket,
+        double& splitSeconds,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+        using VecG = typename CoeffCtxPrimeArray64<M>::template Vec<u64>;
+
+        SilentVoleReceiver<VectorF, u64, CoeffCtxPrimeArray64<M>> receiver;
+        receiver.mMultType = MultType::ExConv7x24;
+        receiver.configure(2 * params.t, SilentBaseType::Base, 128, vectorCtx);
+        VecG c;
+        VecF a;
+        vectorCtx.resize(c, 2 * params.t);
+        vectorCtx.resize(a, 2 * params.t);
+
+        auto start = omp_get_wtime();
+        macoro::sync_wait(receiver.genSilentBaseOts(prng, socket));
+        macoro::sync_wait(receiver.silentReceive(c, a, prng, socket));
+
+        auto q = rmvoleNetBenchBuildCombinedSparseCoefficients<M>(params, instance, vectorCtx);
+        std::vector<u64> d(2 * params.t);
+        for (u64 i = 0; i < 2 * params.t; ++i)
+            scalarCtx.minus(d[i], q[i], c[i]);
+        macoro::sync_wait(socket.send(coproto::copy(d)));
+        macoro::sync_wait(socket.flush());
+        splitSeconds += omp_get_wtime() - start;
+
+        RmvoleNetBenchSplitSharePair<M> out;
+        vectorCtx.resize(out.s.p0Additive, params.t);
+        vectorCtx.resize(out.s.p1ProgrammedNeg, params.t);
+        vectorCtx.resize(out.e.p0Additive, params.t);
+        vectorCtx.resize(out.e.p1ProgrammedNeg, params.t);
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            vectorCtx.copy(out.s.p0Additive[i], a[i]);
+            vectorCtx.copy(out.e.p0Additive[i], a[params.t + i]);
+        }
+        return out;
+    }
+
+    template<u64 M>
+    RmvoleNetBenchSplitSharePair<M> rmvoleNetBenchRunTcpClientSilentR2CSplitInput(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        cp::Socket& socket,
+        double& splitSeconds,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        using VecF = typename CoeffCtxPrimeArray64<M>::template Vec<VectorF>;
+
+        SilentVoleSender<VectorF, u64, CoeffCtxPrimeArray64<M>> sender;
+        sender.mMultType = MultType::ExConv7x24;
+        sender.configure(2 * params.t, SilentBaseType::Base, 128, vectorCtx);
+        VecF b;
+        vectorCtx.resize(b, 2 * params.t);
+
+        auto start = omp_get_wtime();
+        macoro::sync_wait(sender.genSilentBaseOts(prng, socket, instance.delta));
+        macoro::sync_wait(sender.silentSend(instance.delta, b, prng, socket));
+        std::vector<u64> d(2 * params.t);
+        macoro::sync_wait(socket.recv(d));
+        splitSeconds += omp_get_wtime() - start;
+
+        RmvoleNetBenchSplitSharePair<M> out;
+        vectorCtx.resize(out.s.p0Additive, params.t);
+        vectorCtx.resize(out.s.p1ProgrammedNeg, params.t);
+        vectorCtx.resize(out.e.p0Additive, params.t);
+        vectorCtx.resize(out.e.p1ProgrammedNeg, params.t);
+        for (u64 i = 0; i < 2 * params.t; ++i)
+        {
+            VectorF dDelta{};
+            VectorF bPrime{};
+            VectorF negBPrime{};
+            rmvoleNetBenchMulDeltaScalar<M>(dDelta, instance.delta, d[i], scalarCtx);
+            for (u64 h = 0; h < M; ++h)
+            {
+                scalarCtx.minus(bPrime[h], b[i][h], dDelta[h]);
+                scalarCtx.minus(negBPrime[h], static_cast<u64>(0), bPrime[h]);
+            }
+            if (i < params.t)
+                vectorCtx.copy(out.s.p1ProgrammedNeg[i], negBPrime);
+            else
+                vectorCtx.copy(out.e.p1ProgrammedNeg[i - params.t], negBPrime);
+        }
+        return out;
+    }
+
+    template<u64 M>
+    RmvoleNetBenchSplitSharePair<M> rmvoleNetBenchRunTcpServerCoeffOtSplitInput(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        cp::Socket& socket,
+        double& splitSeconds,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        constexpr u64 BitCount = 61;
+        auto L = 2 * params.t;
+        auto otCount = L * BitCount;
+        auto q = rmvoleNetBenchBuildCombinedSparseCoefficients<M>(params, instance, vectorCtx);
+        BitVector choices(otCount);
+        for (u64 i = 0; i < L; ++i)
+            for (u64 k = 0; k < BitCount; ++k)
+                choices[i * BitCount + k] = static_cast<u8>((q[i] >> k) & 1);
+
+        AlignedUnVector<block> seeds(otCount);
+        std::vector<std::array<VectorF, 2>> encrypted(otCount);
+        std::vector<VectorF> A(L);
+
+        KosOtExtReceiver receiver;
+        receiver.mIsMalicious = false;
+        auto start = omp_get_wtime();
+        macoro::sync_wait(receiver.genBaseOts(prng, socket));
+        macoro::sync_wait(receiver.receiveChosen(choices, seeds, prng, socket));
+        macoro::sync_wait(socket.recv(encrypted));
+        splitSeconds += omp_get_wtime() - start;
+
+        for (u64 i = 0; i < L; ++i)
+        {
+            A[i] = VectorF{};
+            for (u64 k = 0; k < BitCount; ++k)
+            {
+                auto ot = i * BitCount + k;
+                auto branch = static_cast<u64>((q[i] >> k) & 1);
+                auto y = encrypted[ot][branch];
+                auto pad = rmvoleNetBenchPadValue<VectorF>(seeds[ot], ot, branch);
+                rmvoleNetBenchXorBytes(reinterpret_cast<u8*>(&y), reinterpret_cast<const u8*>(&pad), sizeof(VectorF));
+                for (u64 h = 0; h < M; ++h)
+                    scalarCtx.plus(A[i][h], A[i][h], y[h] % CoeffCtxIntegerPrime_64::PR);
+            }
+        }
+
+        RmvoleNetBenchSplitSharePair<M> out;
+        vectorCtx.resize(out.s.p0Additive, params.t);
+        vectorCtx.resize(out.s.p1ProgrammedNeg, params.t);
+        vectorCtx.resize(out.e.p0Additive, params.t);
+        vectorCtx.resize(out.e.p1ProgrammedNeg, params.t);
+        for (u64 i = 0; i < params.t; ++i)
+        {
+            vectorCtx.copy(out.s.p0Additive[i], A[i]);
+            vectorCtx.copy(out.e.p0Additive[i], A[params.t + i]);
+        }
+        return out;
+    }
+
+    template<u64 M>
+    RmvoleNetBenchSplitSharePair<M> rmvoleNetBenchRunTcpClientCoeffOtSplitInput(
+        const RmvoleNetBenchParams& params,
+        const RmvoleNetBenchInstance<M>& instance,
+        cp::Socket& socket,
+        double& splitSeconds,
+        PRNG& prng,
+        CoeffCtxPrimeArray64<M>& vectorCtx,
+        CoeffCtxIntegerPrime_64& scalarCtx)
+    {
+        using VectorF = RmvolePprfPrimeVector<M>;
+        constexpr u64 BitCount = 61;
+        auto L = 2 * params.t;
+        auto otCount = L * BitCount;
+        std::vector<std::array<block, 2>> seedPairs(otCount);
+        std::vector<std::array<VectorF, 2>> encrypted(otCount);
+        std::vector<VectorF> B(L);
+
+        for (u64 i = 0; i < L; ++i)
+        {
+            B[i] = VectorF{};
+            for (u64 k = 0; k < BitCount; ++k)
+            {
+                auto ot = i * BitCount + k;
+                seedPairs[ot][0] = prng.get<block>();
+                seedPairs[ot][1] = prng.get<block>();
+                VectorF r{};
+                for (u64 h = 0; h < M; ++h)
+                    scalarCtx.fromBlock(r[h], prng.get<block>());
+                VectorF shiftedDelta{};
+                auto pow2 = (static_cast<u64>(1) << k) % CoeffCtxIntegerPrime_64::PR;
+                rmvoleNetBenchMulDeltaScalar<M>(shiftedDelta, instance.delta, pow2, scalarCtx);
+                VectorF m0 = r;
+                VectorF m1{};
+                for (u64 h = 0; h < M; ++h)
+                {
+                    scalarCtx.plus(m1[h], r[h], shiftedDelta[h]);
+                    scalarCtx.plus(B[i][h], B[i][h], r[h]);
+                }
+                auto pad0 = rmvoleNetBenchPadValue<VectorF>(seedPairs[ot][0], ot, 0);
+                auto pad1 = rmvoleNetBenchPadValue<VectorF>(seedPairs[ot][1], ot, 1);
+                rmvoleNetBenchXorBytes(reinterpret_cast<u8*>(&m0), reinterpret_cast<const u8*>(&pad0), sizeof(VectorF));
+                rmvoleNetBenchXorBytes(reinterpret_cast<u8*>(&m1), reinterpret_cast<const u8*>(&pad1), sizeof(VectorF));
+                encrypted[ot] = {m0, m1};
+            }
+        }
+
+        KosOtExtSender sender;
+        sender.mIsMalicious = false;
+        auto start = omp_get_wtime();
+        macoro::sync_wait(sender.genBaseOts(prng, socket));
+        macoro::sync_wait(sender.sendChosen(seedPairs, prng, socket));
+        macoro::sync_wait(socket.send(coproto::copy(encrypted)));
+        macoro::sync_wait(socket.flush());
+        splitSeconds += omp_get_wtime() - start;
+
+        RmvoleNetBenchSplitSharePair<M> out;
+        vectorCtx.resize(out.s.p0Additive, params.t);
+        vectorCtx.resize(out.s.p1ProgrammedNeg, params.t);
+        vectorCtx.resize(out.e.p0Additive, params.t);
+        vectorCtx.resize(out.e.p1ProgrammedNeg, params.t);
+        for (u64 i = 0; i < L; ++i)
+        {
+            VectorF negB{};
+            for (u64 h = 0; h < M; ++h)
+                scalarCtx.minus(negB[h], static_cast<u64>(0), B[i][h]);
+            if (i < params.t)
+                vectorCtx.copy(out.s.p1ProgrammedNeg[i], negB);
+            else
+                vectorCtx.copy(out.e.p1ProgrammedNeg[i - params.t], negB);
         }
         return out;
     }
@@ -1108,7 +1379,15 @@ namespace osuCrypto
         const RmvoleNetBenchInstance<M>* fixedInstance = nullptr)
     {
         RmvoleNetBenchRow row;
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+            row.method = backend == RmvoleNetBenchBackend::Vector
+                ? "RM_VECTOR_OPT"
+                : "RM_COORD_OPT";
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
+            row.method = backend == RmvoleNetBenchBackend::Vector
+                ? "RM_VECTOR_SILENT_R2C_SPLIT"
+                : "RM_COORD_SILENT_R2C_SPLIT";
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
             row.method = backend == RmvoleNetBenchBackend::Vector
                 ? "RMVOLE-noisy-VOLE-split-input-vector-RegularPprf-setup-local-expand"
                 : "RMVOLE-noisy-VOLE-split-input-coordinate-RegularPprf-setup-local-expand";
@@ -1327,7 +1606,15 @@ namespace osuCrypto
         bool ok = true;
 
         RmvoleNetBenchRow row;
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+            row.method = backend == RmvoleNetBenchBackend::Vector
+                ? "RM_VECTOR_OPT"
+                : "RM_COORD_OPT";
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
+            row.method = backend == RmvoleNetBenchBackend::Vector
+                ? "RM_VECTOR_SILENT_R2C_SPLIT"
+                : "RM_COORD_SILENT_R2C_SPLIT";
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
             row.method = backend == RmvoleNetBenchBackend::Vector
                 ? "RMVOLE-noisy-VOLE-split-input-vector-RegularPprf-setup-local-expand"
                 : "RMVOLE-noisy-VOLE-split-input-coordinate-RegularPprf-setup-local-expand";
@@ -1357,7 +1644,27 @@ namespace osuCrypto
         row.entries = params.m * params.N;
         row.pprfInstances = rmvoleNetBenchPprfInstances(params, backend);
         row.defaultBaseOtCalls = row.pprfInstances;
-        if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+        if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+        {
+            row.notes = server
+                ? (backend == RmvoleNetBenchBackend::Vector
+                    ? "tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand"
+                    : "tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; coordinate_scalar_fixed_prime_setup; local_expand")
+                : (backend == RmvoleNetBenchBackend::Vector
+                    ? "tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand"
+                    : "tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; coordinate_scalar_fixed_prime_setup; local_expand");
+        }
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
+        {
+            row.notes = server
+                ? (backend == RmvoleNetBenchBackend::Vector
+                    ? "tcp_two_process; p0_silent_r2c_receiver; SPLIT_SILENT_R2C; d=q-c correction; vector_fixed_prime_setup; local_expand"
+                    : "tcp_two_process; p0_silent_r2c_receiver; SPLIT_SILENT_R2C; d=q-c correction; coordinate_scalar_fixed_prime_setup; local_expand")
+                : (backend == RmvoleNetBenchBackend::Vector
+                    ? "tcp_two_process; p1_silent_r2c_sender; SPLIT_SILENT_R2C; b_prime=b-d*Delta; vector_fixed_prime_setup; local_expand"
+                    : "tcp_two_process; p1_silent_r2c_sender; SPLIT_SILENT_R2C; b_prime=b-d*Delta; coordinate_scalar_fixed_prime_setup; local_expand");
+        }
+        else if (setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
         {
             row.notes = server
                 ? (backend == RmvoleNetBenchBackend::Vector
@@ -1445,6 +1752,8 @@ namespace osuCrypto
                 {
                     ModuleMVOLEResult<u64, CoeffCtxIntegerPrime_64> result;
                     result.p1 = std::move(p1);
+                    scalarCtx.resize(result.p0.x, params.N);
+                    result.p0.Z0.resize(params.m, params.N);
                     macoro::sync_wait(socket.recv(result.p0.x));
                     macoro::sync_wait(socket.recv(result.p0.Z0));
                     row.verificationOpeningBytes += rmvoleNetBenchOpeningBytes(params);
@@ -1556,6 +1865,8 @@ namespace osuCrypto
                 {
                     ModuleMVOLEResult<u64, CoeffCtxIntegerPrime_64> result;
                     result.p1 = std::move(p1);
+                    scalarCtx.resize(result.p0.x, params.N);
+                    result.p0.Z0.resize(params.m, params.N);
                     macoro::sync_wait(socket.recv(result.p0.x));
                     macoro::sync_wait(socket.recv(result.p0.Z0));
                     row.verificationOpeningBytes += rmvoleNetBenchOpeningBytes(params);
@@ -1576,7 +1887,13 @@ namespace osuCrypto
                 rmvoleNetBenchBuildP0Gen<M>(p0Gen, params, instance, scalarCtx);
 
                 auto before = socket.bytesSent() + socket.bytesReceived();
-                auto shares = rmvoleNetBenchRunTcpServerNoisyVoleSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx);
+                RmvoleNetBenchSplitSharePair<M> shares;
+                if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+                    shares = rmvoleNetBenchRunTcpServerCoeffOtSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
+                else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
+                    shares = rmvoleNetBenchRunTcpServerSilentR2CSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
+                else
+                    shares = rmvoleNetBenchRunTcpServerNoisyVoleSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx);
                 macoro::sync_wait(socket.flush());
                 auto after = socket.bytesSent() + socket.bytesReceived();
                 row.splitInputBytes += after >= before ? after - before : 0;
@@ -1617,7 +1934,13 @@ namespace osuCrypto
                 rmvoleNetBenchBuildP1Gen<M>(p1Gen, params, instance, scalarCtx);
 
                 auto before = socket.bytesSent() + socket.bytesReceived();
-                auto shares = rmvoleNetBenchRunTcpClientNoisyVoleSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx);
+                RmvoleNetBenchSplitSharePair<M> shares;
+                if (setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
+                    shares = rmvoleNetBenchRunTcpClientCoeffOtSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
+                else if (setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C)
+                    shares = rmvoleNetBenchRunTcpClientSilentR2CSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx, scalarCtx);
+                else
+                    shares = rmvoleNetBenchRunTcpClientNoisyVoleSplitInput<M>(params, instance, socket, splitInput, prng, vectorCtx);
                 macoro::sync_wait(socket.flush());
                 auto after = socket.bytesSent() + socket.bytesReceived();
                 row.splitInputBytes += after >= before ? after - before : 0;
@@ -1645,6 +1968,8 @@ namespace osuCrypto
                 {
                     ModuleMVOLEResult<u64, CoeffCtxIntegerPrime_64> result;
                     result.p1 = std::move(p1);
+                    scalarCtx.resize(result.p0.x, params.N);
+                    result.p0.Z0.resize(params.m, params.N);
                     macoro::sync_wait(socket.recv(result.p0.x));
                     macoro::sync_wait(socket.recv(result.p0.Z0));
                     row.verificationOpeningBytes += rmvoleNetBenchOpeningBytes(params);
@@ -1680,7 +2005,9 @@ namespace osuCrypto
         auto excluded = (server ? row.harnessMetadataBytes : 0) + (!server ? row.verificationOpeningBytes : 0);
         row.cleanProtocolBytes = row.totalSocketBytes >= excluded ? row.totalSocketBytes - excluded : 0;
         if (setupMode == RmvoleNetBenchSetupMode::SplitInputSimulated ||
-            setupMode == RmvoleNetBenchSetupMode::SplitInputVole)
+            setupMode == RmvoleNetBenchSetupMode::SplitInputVole ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputSilentR2C ||
+            setupMode == RmvoleNetBenchSetupMode::SplitInputCoeffOt)
         {
             row.pprfBytes = row.cleanProtocolBytes >= row.splitInputBytes ? row.cleanProtocolBytes - row.splitInputBytes : 0;
         }
@@ -2656,7 +2983,7 @@ namespace osuCrypto
         {
             if (argc != 7 && argc != 8 && argc != 9)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]" << std::endl;
                 return 1;
             }
 
@@ -2681,8 +3008,8 @@ namespace osuCrypto
         {
             if (argc != 10 && argc != 11 && argc != 12)
             {
-                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
-                          << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]" << std::endl;
+                std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
+                          << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]" << std::endl;
                 return 1;
             }
 
@@ -2710,9 +3037,9 @@ namespace osuCrypto
             return row.ok ? 0 : 1;
         }
 
-	        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
-	                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
-	                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole] [vector|coordinate]\n"
+	        std::cerr << "Usage: ./build/main --RMVOLE_NET_BENCH local <logN> <t> <m> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH server <host_or_0.0.0.0> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
+	                  << "       ./build/main --RMVOLE_NET_BENCH client <host> <port> <logN> <t> <m> <reps> <verify|bench> [centralized|split-input|split-input-vole|split-input-silent-r2c|split-input-coeff-ot] [vector|coordinate]\n"
 	                  << "       ./build/main --RMVOLE_NET_BENCH direct-server|direct-client <host> <port> <logN> <m> <reps> <verify|bench>\n"
 	                  << "       ./build/main --RMVOLE_NET_BENCH silent-server|silent-client <host> <port> <logN> <m> <reps> <verify|bench>" << std::endl;
         return 1;

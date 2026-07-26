@@ -20,6 +20,7 @@
 #include "SubfieldVoleNetBench.h"
 #include "RmvolePprfNetSetupTest.h"
 #include "RmvoleNetBench.h"
+#include "SplitOptNetworkBench.h"
 //#define trial 2
 //#define num_thread 1
 using namespace osuCrypto;
@@ -43,6 +44,7 @@ void printUsage() {
     printf("  --SUBFIELD_VOLE_NET_BENCH\tBenchmarks libOTe generic subfield VOLE over loopback coproto sockets.\n");
     printf("  --RMVOLE_PPRF_NET_SETUP\tTests RM-VOLE setup PPRF layer over local coproto sockets.\n");
     printf("  --RMVOLE_NET_BENCH\tBenchmarks networked RM-VOLE setup plus local expansion.\n");
+    printf("  --SPLIT_OPT_BENCH\tBenchmarks split-input product-sharing backends.\n");
 }
 
 int main(int argc, char **argv)
@@ -60,6 +62,9 @@ int main(int argc, char **argv)
         }
         if (strcmp(argv[1], "--RMVOLE_NET_BENCH") ==0) {
             return RmvoleNetBench(argc, argv);
+        }
+        if (strcmp(argv[1], "--SPLIT_OPT_BENCH") ==0) {
+            return SplitOptNetworkBench(argc, argv);
         }
 
         u64 num_var=std::atoi(argv[2]);
