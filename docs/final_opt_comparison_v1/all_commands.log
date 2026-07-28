@@ -10087,3 +10087,1033 @@ RMVOLE_NET_BENCH mode=bench setup_mode=split-input-vole backend=vector role=send
 $ tc qdisc del dev lo root
 [exit=0 elapsed_s=0.003069]
 
+
+# WAN10 m=32 completion build on 2026-07-28
+$ cmake -S /home/cyy/pcg-experiments/mVOLE-split-opt-network -B /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/home/cyy/pcg-experiments/local
+-- The CXX compiler identification is GNU 11.5.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - found
+-- Found Threads: TRUE  
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+libOTeConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/libOTe
+cryptoToolsConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/cryptoTools
+-- SODIUM_INCLUDE_DIRS:  /home/cyy/pcg-experiments/local/include
+-- SODIUM_LIBRARIES:  /home/cyy/pcg-experiments/local/lib/libsodium.a
+-- SODIUM_MONTGOMERY:  ON
+
+coprotoConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/coproto/coprotoConfig.cmake
+find_package(macoro REQUIRED COMPONENTS cpp_20;no_pic;no_asan;Release) @ /home/cyy/pcg-experiments/local/lib/cmake/coproto/coprotoFindDeps.cmake
+macoroConfig.cmake: /home/cyy/pcg-experiments/local/lib/cmake/macoro/macoroConfig.cmake
+-- Found Boost: /home/cyy/pcg-experiments/local/lib/cmake/Boost-1.86.0/BoostConfig.cmake (found suitable version "1.86.0", minimum required is "1.84.0") found components: system thread regex 
+
+
+Boost_LIB: Boost::system;Boost::thread;Boost::regex
+Boost_INC: /home/cyy/pcg-experiments/local/include
+
+
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "1.1.1f")  
+OPENSSL_INCLUDE_DIR=/usr/include
+OPENSSL_SSL_LIBRARY=/usr/lib/x86_64-linux-gnu/libssl.so
+OPENSSL_LIBRARIES  =/usr/lib/x86_64-linux-gnu/libssl.so;/usr/lib/x86_64-linux-gnu/libcrypto.so
+OPENSSL_VERSION    =1.1.1f
+-- LIBDIVIDE_INCLUDE_DIRS:  /home/cyy/pcg-experiments/local/include
+-- Configuring done (0.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt
+[exit=0 elapsed_s=0.625845]
+
+$ cmake --build /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt -j2
+[ 50%] Building CXX object CMakeFiles/main.dir/main.cpp.o
+In file included from /home/cyy/pcg-experiments/mVOLE-split-opt-network/libOTe/libOTe/Triple/Foleage/fft/FoleageFft.h:19,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/main.cpp:6:
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/libOTe/libOTe/Triple/Foleage/FoleageUtils.h: In function ‘void osuCrypto::F4Multiply(osuCrypto::span<osuCrypto::block>, osuCrypto::span<osuCrypto::block>, osuCrypto::span<osuCrypto::block>, size_t)’:
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/libOTe/libOTe/Triple/Foleage/FoleageUtils.h:319:60: warning: ‘osuCrypto::block osuCrypto::block::operator<<(const uint8_t&) const’ is deprecated: use slli_epi64 instead [-Wdeprecated-declarations]
+  319 |                         res_poly[i] = tmp ^ (a_h & (b_l << 1));
+      |                                                            ^
+In file included from /home/cyy/pcg-experiments/local/include/cryptoTools/Common/Defines.h:7,
+                 from /home/cyy/pcg-experiments/local/include/cryptoTools/Common/BitVector.h:3,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/libOTe/libOTe/Vole/Noisy/NoisyVoleSender.h:30,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/Coeff128.h:2,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/main.cpp:5:
+/home/cyy/pcg-experiments/local/include/cryptoTools/Common/block.h:317:67: note: declared here
+  317 |                 OC_CUDA_CALLABLE OC_FORCEINLINE  osuCrypto::block operator<<(const std::uint8_t& rhs)const
+      |                                                                   ^~~~~~~~
+In file included from /home/cyy/pcg-experiments/mVOLE-split-opt-network/libOTe/libOTe/Triple/Foleage/fft/FoleageFft.h:19,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/main.cpp:6:
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/libOTe/libOTe/Triple/Foleage/FoleageUtils.h:320:49: warning: ‘osuCrypto::block osuCrypto::block::operator<<(const uint8_t&) const’ is deprecated: use slli_epi64 instead [-Wdeprecated-declarations]
+  320 |                         res_poly[i] ^= ((a_l << 1) & b_h);
+      |                                                 ^
+In file included from /home/cyy/pcg-experiments/local/include/cryptoTools/Common/Defines.h:7,
+                 from /home/cyy/pcg-experiments/local/include/cryptoTools/Common/BitVector.h:3,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/libOTe/libOTe/Vole/Noisy/NoisyVoleSender.h:30,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/Coeff128.h:2,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/main.cpp:5:
+/home/cyy/pcg-experiments/local/include/cryptoTools/Common/block.h:317:67: note: declared here
+  317 |                 OC_CUDA_CALLABLE OC_FORCEINLINE  osuCrypto::block operator<<(const std::uint8_t& rhs)const
+      |                                                                   ^~~~~~~~
+In file included from /home/cyy/pcg-experiments/mVOLE-split-opt-network/Prime_test.h:11,
+                 from /home/cyy/pcg-experiments/mVOLE-split-opt-network/main.cpp:13:
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h: In instantiation of ‘macoro::task<> osuCrypto::RegularPrimeDpf::implExpand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, Output&&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*) [with Output = RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’:
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h:247:20:   required from ‘macoro::task<> osuCrypto::RegularPrimeDpf::expand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, Output&&, coproto::Socket&) [with Output = RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Prime_OLE.h:66:16:   required from here
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::output’ whose type depends on the type ‘RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>’ which has no linkage [-Wsubobject-linkage]
+  809 |         }
+      |         ^
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:62, auto:63, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::getRow_1_2’ whose type has no linkage [-Wsubobject-linkage]
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h: In instantiation of ‘macoro::task<> osuCrypto::RegularPrimeDpf::implExpand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, Output&&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*) [with Output = RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’:
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h:247:20:   required from ‘macoro::task<> osuCrypto::RegularPrimeDpf::expand(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, Output&&, coproto::Socket&) [with Output = RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>; osuCrypto::span<long unsigned int> = std::span<long unsigned int, 18446744073709551615>]’
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Prime_OLE.h:67:16:   required from here
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::output’ whose type depends on the type ‘RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>’ which has no linkage [-Wsubobject-linkage]
+/home/cyy/pcg-experiments/mVOLE-split-opt-network/Dpf.h:809:9: warning: ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame’ has a field ‘osuCrypto::RegularPrimeDpf::implExpand<RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&>(osuCrypto::span<long unsigned int>, osuCrypto::span<long unsigned int>, osuCrypto::block, osuCrypto::RegularPrimeDpfKey*, RegularPrimeDpf_Test()::<lambda(auto:64, auto:65, osuCrypto::u64, osuCrypto::block)>&, coproto::Socket&, osuCrypto::RegularPrimeDpfKey*)::_ZN9osuCrypto15RegularPrimeDpf10implExpandIRZ20RegularPrimeDpf_TestvEUlT_T0_mNS_5blockEE0_EEN6macoro4taskIvLb1EEESt4spanImLm18446744073709551615EESB_S4_PNS_18RegularPrimeDpfKeyEOS2_RN7coproto6SocketESD_.Frame::getRow_1_2’ whose type has no linkage [-Wsubobject-linkage]
+[100%] Linking CXX executable main
+[100%] Built target main
+[exit=0 elapsed_s=107.103918]
+
+
+# WAN10 m=32 completion campaign 2026-07-28T02:29:10.001356+00:00 source=56a80d12dc147c6f4d9452798d88f387cd1c778b
+$ tc qdisc del dev lo root
+Error: Cannot delete qdisc with handle of zero.
+[exit=2 elapsed_s=0.002245]
+
+$ tc qdisc replace dev lo root netem rate 12mbit delay 20ms
+[exit=0 elapsed_s=0.002181]
+
+$ tc qdisc show dev lo
+qdisc netem 8026: root refcnt 2 limit 1000 delay 20.0ms rate 12Mbit
+[exit=0 elapsed_s=0.001968]
+
+$ ping -c 20 -i 0.05 127.0.0.1
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=40.2 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=3 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=4 ttl=64 time=43.1 ms
+64 bytes from 127.0.0.1: icmp_seq=5 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=6 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=7 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=8 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=9 ttl=64 time=41.4 ms
+64 bytes from 127.0.0.1: icmp_seq=10 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=11 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=12 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=13 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=14 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=15 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=16 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=17 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=18 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=19 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=20 ttl=64 time=40.1 ms
+
+--- 127.0.0.1 ping statistics ---
+20 packets transmitted, 20 received, 0% packet loss, time 950ms
+rtt min/avg/max/mdev = 40.140/40.352/43.123/0.688 ms
+[exit=0 elapsed_s=0.993194]
+
+$ iperf3 -s -1 -p 14000 &
+$ iperf3 -c 127.0.0.1 -p 14000 -t 2 -J
+{
+	"start":	{
+		"connected":	[{
+				"socket":	5,
+				"local_host":	"127.0.0.1",
+				"local_port":	48232,
+				"remote_host":	"127.0.0.1",
+				"remote_port":	14000
+			}],
+		"version":	"iperf 3.7",
+		"system_info":	"Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64",
+		"timestamp":	{
+			"time":	"Tue, 28 Jul 2026 02:29:11 GMT",
+			"timesecs":	1785205751
+		},
+		"connecting_to":	{
+			"host":	"127.0.0.1",
+			"port":	14000
+		},
+		"cookie":	"3dxyxbdtr6u3bcqmszcsonlev4a5qi6wy3zh",
+		"tcp_mss_default":	32741,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	16384,
+		"rcvbuf_actual":	131072,
+		"test_start":	{
+			"protocol":	"TCP",
+			"num_streams":	1,
+			"blksize":	131072,
+			"omit":	0,
+			"duration":	2,
+			"bytes":	0,
+			"blocks":	0,
+			"reverse":	0,
+			"tos":	0
+		}
+	},
+	"intervals":	[{
+			"streams":	[{
+					"socket":	5,
+					"start":	0,
+					"end":	1.000662,
+					"seconds":	1.0006619691848755,
+					"bytes":	3832796,
+					"bits_per_second":	30642083.884707954,
+					"retransmits":	0,
+					"snd_cwnd":	1571592,
+					"rtt":	327157,
+					"rttvar":	85880,
+					"pmtu":	65535,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	0,
+				"end":	1.000662,
+				"seconds":	1.0006619691848755,
+				"bytes":	3832796,
+				"bits_per_second":	30642083.884707954,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	1.000662,
+					"end":	2.000777,
+					"seconds":	1.0001150369644165,
+					"bytes":	1310720,
+					"bits_per_second":	10484553.888747377,
+					"retransmits":	0,
+					"snd_cwnd":	1702558,
+					"rtt":	554516,
+					"rttvar":	20692,
+					"pmtu":	65535,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	1.000662,
+				"end":	2.000777,
+				"seconds":	1.0001150369644165,
+				"bytes":	1310720,
+				"bits_per_second":	10484553.888747377,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}],
+	"end":	{
+		"streams":	[{
+				"sender":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.000777,
+					"seconds":	2.000777,
+					"bytes":	5143516,
+					"bits_per_second":	20566074.080219835,
+					"retransmits":	0,
+					"max_snd_cwnd":	1702558,
+					"max_rtt":	554516,
+					"min_rtt":	327157,
+					"mean_rtt":	440836,
+					"sender":	true
+				},
+				"receiver":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.8153740000000003,
+					"seconds":	2.000777,
+					"bytes":	3767313,
+					"bits_per_second":	10704973.47776885,
+					"sender":	true
+				}
+			}],
+		"sum_sent":	{
+			"start":	0,
+			"end":	2.000777,
+			"seconds":	2.000777,
+			"bytes":	5143516,
+			"bits_per_second":	20566074.080219835,
+			"retransmits":	0,
+			"sender":	true
+		},
+		"sum_received":	{
+			"start":	0,
+			"end":	2.8153740000000003,
+			"seconds":	2.8153740000000003,
+			"bytes":	3767313,
+			"bits_per_second":	10704973.47776885,
+			"sender":	true
+		},
+		"cpu_utilization_percent":	{
+			"host_total":	3.7416288105145954,
+			"host_user":	1.1974865089210951,
+			"host_system":	2.5441423015935003,
+			"remote_total":	0.065748858530921883,
+			"remote_user":	0.0062304157514495454,
+			"remote_system":	0.059488488857590366
+		},
+		"sender_tcp_congestion":	"cubic",
+		"receiver_tcp_congestion":	"cubic"
+	}
+}
+[exit=0 elapsed_s=4.036989]
+
+-----------------------------------------------------------
+Server listening on 14000
+-----------------------------------------------------------
+Accepted connection from 127.0.0.1, port 48222
+[  5] local 127.0.0.1 port 14000 connected to 127.0.0.1 port 48232
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-1.00   sec  1.03 MBytes  8.65 Mbits/sec                  
+[  5]   1.00-2.00   sec  1.38 MBytes  11.5 Mbits/sec                  
+[  5]   2.00-2.82   sec  1.19 MBytes  12.2 Mbits/sec                  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-2.82   sec  3.59 MBytes  10.7 Mbits/sec                  receiver
+[iperf_server_exit=0 direction=forward]
+
+$ iperf3 -s -1 -p 14001 &
+$ iperf3 -c 127.0.0.1 -p 14001 -t 2 -J -R
+{
+	"start":	{
+		"connected":	[{
+				"socket":	5,
+				"local_host":	"127.0.0.1",
+				"local_port":	33796,
+				"remote_host":	"127.0.0.1",
+				"remote_port":	14001
+			}],
+		"version":	"iperf 3.7",
+		"system_info":	"Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64",
+		"timestamp":	{
+			"time":	"Tue, 28 Jul 2026 02:29:15 GMT",
+			"timesecs":	1785205755
+		},
+		"connecting_to":	{
+			"host":	"127.0.0.1",
+			"port":	14001
+		},
+		"cookie":	"mv6aheeo6tkhekt7ueozjhfbpc6vfsd3k4w4",
+		"tcp_mss_default":	32741,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	16384,
+		"rcvbuf_actual":	131072,
+		"test_start":	{
+			"protocol":	"TCP",
+			"num_streams":	1,
+			"blksize":	131072,
+			"omit":	0,
+			"duration":	2,
+			"bytes":	0,
+			"blocks":	0,
+			"reverse":	1,
+			"tos":	0
+		}
+	},
+	"intervals":	[{
+			"streams":	[{
+					"socket":	5,
+					"start":	0,
+					"end":	1.000058,
+					"seconds":	1.0000580549240112,
+					"bytes":	1343488,
+					"bits_per_second":	10747280.067472355,
+					"omitted":	false,
+					"sender":	false
+				}],
+			"sum":	{
+				"start":	0,
+				"end":	1.000058,
+				"seconds":	1.0000580549240112,
+				"bytes":	1343488,
+				"bits_per_second":	10747280.067472355,
+				"omitted":	false,
+				"sender":	false
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	1.000058,
+					"end":	2.000071,
+					"seconds":	1.000012993812561,
+					"bytes":	1441580,
+					"bits_per_second":	11532490.148984643,
+					"omitted":	false,
+					"sender":	false
+				}],
+			"sum":	{
+				"start":	1.000058,
+				"end":	2.000071,
+				"seconds":	1.000012993812561,
+				"bytes":	1441580,
+				"bits_per_second":	11532490.148984643,
+				"omitted":	false,
+				"sender":	false
+			}
+		}],
+	"end":	{
+		"streams":	[{
+				"sender":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.638668,
+					"seconds":	2.638668,
+					"bytes":	6488064,
+					"bits_per_second":	19670724.774772726,
+					"retransmits":	0,
+					"max_snd_cwnd":	0,
+					"max_rtt":	0,
+					"min_rtt":	0,
+					"mean_rtt":	0,
+					"sender":	false
+				},
+				"receiver":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.000071,
+					"seconds":	2.000071,
+					"bytes":	2785068,
+					"bits_per_second":	11139876.534383029,
+					"sender":	false
+				}
+			}],
+		"sum_sent":	{
+			"start":	0,
+			"end":	2.638668,
+			"seconds":	2.638668,
+			"bytes":	6488064,
+			"bits_per_second":	19670724.774772726,
+			"retransmits":	0,
+			"sender":	false
+		},
+		"sum_received":	{
+			"start":	0,
+			"end":	2.000071,
+			"seconds":	2.000071,
+			"bytes":	2785068,
+			"bits_per_second":	11139876.534383029,
+			"sender":	false
+		},
+		"cpu_utilization_percent":	{
+			"host_total":	1.9899659095296605,
+			"host_user":	0.56343530191983171,
+			"host_system":	1.4265306076098287,
+			"remote_total":	0.081661517752998888,
+			"remote_user":	0.081661517752998888,
+			"remote_system":	0
+		},
+		"sender_tcp_congestion":	"cubic",
+		"receiver_tcp_congestion":	"cubic"
+	}
+}
+[exit=0 elapsed_s=4.740621]
+
+-----------------------------------------------------------
+Server listening on 14001
+-----------------------------------------------------------
+Accepted connection from 127.0.0.1, port 33784
+[  5] local 127.0.0.1 port 14001 connected to 127.0.0.1 port 33796
+[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+[  5]   0.00-1.00   sec  3.69 MBytes  30.9 Mbits/sec    0   1.50 MBytes       
+[  5]   1.00-2.00   sec  1.25 MBytes  10.5 Mbits/sec    0   1.62 MBytes       
+[  5]   2.00-2.64   sec  1.25 MBytes  16.4 Mbits/sec    0   1.69 MBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-2.64   sec  6.19 MBytes  19.7 Mbits/sec    0             sender
+[iperf_server_exit=0 direction=reverse]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14100 14 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14100 14 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14100 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=3.263617 pprf_setup_s=0.370084 setup_s=3.633701 expand_p0_s=0.012257 expand_p1_s=0.000000 total_s=3.645958 verify_s=0.000000 bytes_sent_by_role=160113 bytes_received_by_role=4411905 total_socket_bytes=4572018 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=194848 clean_protocol_bytes=4571744 entries=524288 entries_per_s=143799.789425 bytes_per_entry=8.719910 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14100 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=1.795037 pprf_setup_s=1.772883 setup_s=3.567920 expand_p0_s=0.000000 expand_p1_s=0.012083 total_s=3.580004 verify_s=0.000000 bytes_sent_by_role=4411905 bytes_received_by_role=160113 total_socket_bytes=4572018 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=195122 clean_protocol_bytes=4572018 entries=524288 entries_per_s=146449.009673 bytes_per_entry=8.720432 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14100]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14101 14 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14101 14 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14101 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=3.263587 pprf_setup_s=0.374710 setup_s=3.638297 expand_p0_s=0.012325 expand_p1_s=0.000000 total_s=3.650622 verify_s=0.000000 bytes_sent_by_role=160113 bytes_received_by_role=4411905 total_socket_bytes=4572018 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=194848 clean_protocol_bytes=4571744 entries=524288 entries_per_s=143616.062615 bytes_per_entry=8.719910 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14101 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=1.794813 pprf_setup_s=1.773350 setup_s=3.568163 expand_p0_s=0.000000 expand_p1_s=0.011976 total_s=3.580139 verify_s=0.000000 bytes_sent_by_role=4411905 bytes_received_by_role=160113 total_socket_bytes=4572018 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=195122 clean_protocol_bytes=4572018 entries=524288 entries_per_s=146443.470898 bytes_per_entry=8.720432 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14101]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14102 14 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14102 14 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14102 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=3.263455 pprf_setup_s=0.370617 setup_s=3.634071 expand_p0_s=0.012343 expand_p1_s=0.000000 total_s=3.646414 verify_s=0.000000 bytes_sent_by_role=160113 bytes_received_by_role=4411905 total_socket_bytes=4572018 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=194848 clean_protocol_bytes=4571744 entries=524288 entries_per_s=143781.800015 bytes_per_entry=8.719910 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14102 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=1.794893 pprf_setup_s=1.774061 setup_s=3.568954 expand_p0_s=0.000000 expand_p1_s=0.012380 total_s=3.581335 verify_s=0.000000 bytes_sent_by_role=4411905 bytes_received_by_role=160113 total_socket_bytes=4572018 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=195122 clean_protocol_bytes=4572018 entries=524288 entries_per_s=146394.585197 bytes_per_entry=8.720432 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14102]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14103 14 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14103 14 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14103 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=3.263506 pprf_setup_s=0.366489 setup_s=3.629995 expand_p0_s=0.012296 expand_p1_s=0.000000 total_s=3.642291 verify_s=0.000000 bytes_sent_by_role=160113 bytes_received_by_role=4411905 total_socket_bytes=4572018 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=194848 clean_protocol_bytes=4571744 entries=524288 entries_per_s=143944.575605 bytes_per_entry=8.719910 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14103 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=1.794961 pprf_setup_s=1.772965 setup_s=3.567927 expand_p0_s=0.000000 expand_p1_s=0.012119 total_s=3.580046 verify_s=0.000000 bytes_sent_by_role=4411905 bytes_received_by_role=160113 total_socket_bytes=4572018 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=195122 clean_protocol_bytes=4572018 entries=524288 entries_per_s=146447.267240 bytes_per_entry=8.720432 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14103]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14104 14 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14104 14 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14104 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=3.284378 pprf_setup_s=0.369853 setup_s=3.654231 expand_p0_s=0.012287 expand_p1_s=0.000000 total_s=3.666518 verify_s=0.000000 bytes_sent_by_role=160113 bytes_received_by_role=4411905 total_socket_bytes=4572018 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=194848 clean_protocol_bytes=4571744 entries=524288 entries_per_s=142993.434862 bytes_per_entry=8.719910 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14104 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=1.795059 pprf_setup_s=1.794193 setup_s=3.589253 expand_p0_s=0.000000 expand_p1_s=0.012422 total_s=3.601675 verify_s=0.000000 bytes_sent_by_role=4411905 bytes_received_by_role=160113 total_socket_bytes=4572018 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=195122 clean_protocol_bytes=4572018 entries=524288 entries_per_s=145567.830634 bytes_per_entry=8.720432 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14104]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14105 14 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14105 14 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14105 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=3.264086 pprf_setup_s=0.369844 setup_s=3.633930 expand_p0_s=0.012265 expand_p1_s=0.000000 total_s=3.646195 verify_s=0.000000 bytes_sent_by_role=160113 bytes_received_by_role=4411905 total_socket_bytes=4572018 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=194848 clean_protocol_bytes=4571744 entries=524288 entries_per_s=143790.425698 bytes_per_entry=8.719910 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14105 logN=14 N=16384 t=64 m=32 blockSize=256 reps=1 split_input_s=1.794989 pprf_setup_s=1.773975 setup_s=3.568965 expand_p0_s=0.000000 expand_p1_s=0.012110 total_s=3.581075 verify_s=0.000000 bytes_sent_by_role=4411905 bytes_received_by_role=160113 total_socket_bytes=4572018 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=195122 clean_protocol_bytes=4572018 entries=524288 entries_per_s=146405.211088 bytes_per_entry=8.720432 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14105]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14106 14 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14106 14 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14106 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=0.871954 silent_extension_s=87.410839 local_output_mapping_s=0.000000 total_s=88.282793 verify_s=0.000000 bytes_sent_by_role=130087312 bytes_received_by_role=375416 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130087056 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=63880 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14106 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=87.979433 silent_extension_s=0.019424 local_output_mapping_s=0.000000 total_s=87.998857 verify_s=0.000000 bytes_sent_by_role=375416 bytes_received_by_role=130087312 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=375416 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=309752 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14106]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14107 14 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14107 14 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14107 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=0.873010 silent_extension_s=87.784161 local_output_mapping_s=0.000000 total_s=88.657171 verify_s=0.000000 bytes_sent_by_role=130087312 bytes_received_by_role=375416 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130087056 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=63880 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14107 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=88.355200 silent_extension_s=0.019147 local_output_mapping_s=0.000000 total_s=88.374347 verify_s=0.000000 bytes_sent_by_role=375416 bytes_received_by_role=130087312 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=375416 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=309752 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14107]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14108 14 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14108 14 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14108 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=0.873065 silent_extension_s=87.414433 local_output_mapping_s=0.000000 total_s=88.287498 verify_s=0.000000 bytes_sent_by_role=130087312 bytes_received_by_role=375416 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130087056 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=63880 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14108 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=87.981004 silent_extension_s=0.019282 local_output_mapping_s=0.000000 total_s=88.000285 verify_s=0.000000 bytes_sent_by_role=375416 bytes_received_by_role=130087312 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=375416 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=309752 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14108]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14109 14 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14109 14 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14109 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=0.949264 silent_extension_s=89.883487 local_output_mapping_s=0.000000 total_s=90.832751 verify_s=0.000000 bytes_sent_by_role=130087312 bytes_received_by_role=375416 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130087056 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=63880 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14109 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=90.520904 silent_extension_s=0.019353 local_output_mapping_s=0.000000 total_s=90.540257 verify_s=0.000000 bytes_sent_by_role=375416 bytes_received_by_role=130087312 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=375416 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=309752 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14109]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14110 14 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14110 14 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14110 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=0.872150 silent_extension_s=88.111967 local_output_mapping_s=0.000000 total_s=88.984117 verify_s=0.000000 bytes_sent_by_role=130087312 bytes_received_by_role=375416 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130087056 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=63880 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14110 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=88.676988 silent_extension_s=0.019334 local_output_mapping_s=0.000000 total_s=88.696321 verify_s=0.000000 bytes_sent_by_role=375416 bytes_received_by_role=130087312 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=375416 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=309752 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14110]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14111 14 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14111 14 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14111 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.413990 silent_extension_s=89.225062 local_output_mapping_s=0.000000 total_s=90.639052 verify_s=0.000000 bytes_sent_by_role=130087312 bytes_received_by_role=375416 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130087056 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=63880 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14111 logN=14 N=16384 m=32 reps=1 requested_N=16384 generated_N=16384 code_size=33232 noise_weight=248 partition_count=248 size_per_partition=134 base_ot_count=1984 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=90.321157 silent_extension_s=0.020049 local_output_mapping_s=0.000000 total_s=90.341207 verify_s=0.000000 bytes_sent_by_role=375416 bytes_received_by_role=130087312 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=375416 direct_payload_bytes=0 silent_base_ot_bytes=63488 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=309752 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14111]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14112 18 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14112 18 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14112 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=3.302971 pprf_setup_s=0.478460 setup_s=3.781430 expand_p0_s=0.293074 expand_p1_s=0.000000 total_s=4.074505 verify_s=0.000000 bytes_sent_by_role=177521 bytes_received_by_role=4428289 total_socket_bytes=4605810 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228640 clean_protocol_bytes=4605536 entries=8388608 entries_per_s=2058804.346817 bytes_per_entry=0.549023 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14112 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=1.970855 pprf_setup_s=1.793036 setup_s=3.763891 expand_p0_s=0.000000 expand_p1_s=0.284712 total_s=4.048603 verify_s=0.000000 bytes_sent_by_role=4428289 bytes_received_by_role=177521 total_socket_bytes=4605810 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228914 clean_protocol_bytes=4605810 entries=8388608 entries_per_s=2071975.757902 bytes_per_entry=0.549055 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14112]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14113 18 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14113 18 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14113 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=3.302445 pprf_setup_s=0.485672 setup_s=3.788117 expand_p0_s=0.292134 expand_p1_s=0.000000 total_s=4.080251 verify_s=0.000000 bytes_sent_by_role=177521 bytes_received_by_role=4428289 total_socket_bytes=4605810 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228640 clean_protocol_bytes=4605536 entries=8388608 entries_per_s=2055905.056976 bytes_per_entry=0.549023 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14113 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=1.970316 pprf_setup_s=1.796201 setup_s=3.766516 expand_p0_s=0.000000 expand_p1_s=0.284661 total_s=4.051178 verify_s=0.000000 bytes_sent_by_role=4428289 bytes_received_by_role=177521 total_socket_bytes=4605810 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228914 clean_protocol_bytes=4605810 entries=8388608 entries_per_s=2070659.139932 bytes_per_entry=0.549055 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14113]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14114 18 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14114 18 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14114 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=3.302276 pprf_setup_s=0.481160 setup_s=3.783436 expand_p0_s=0.294104 expand_p1_s=0.000000 total_s=4.077540 verify_s=0.000000 bytes_sent_by_role=177521 bytes_received_by_role=4428289 total_socket_bytes=4605810 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228640 clean_protocol_bytes=4605536 entries=8388608 entries_per_s=2057271.701856 bytes_per_entry=0.549023 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14114 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=1.970275 pprf_setup_s=1.792001 setup_s=3.762277 expand_p0_s=0.000000 expand_p1_s=0.287100 total_s=4.049377 verify_s=0.000000 bytes_sent_by_role=4428289 bytes_received_by_role=177521 total_socket_bytes=4605810 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228914 clean_protocol_bytes=4605810 entries=8388608 entries_per_s=2071580.088515 bytes_per_entry=0.549055 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14114]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14115 18 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14115 18 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14115 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=3.302286 pprf_setup_s=0.482424 setup_s=3.784710 expand_p0_s=0.292669 expand_p1_s=0.000000 total_s=4.077380 verify_s=0.000000 bytes_sent_by_role=177521 bytes_received_by_role=4428289 total_socket_bytes=4605810 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228640 clean_protocol_bytes=4605536 entries=8388608 entries_per_s=2057352.765276 bytes_per_entry=0.549023 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14115 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=1.970304 pprf_setup_s=1.794386 setup_s=3.764690 expand_p0_s=0.000000 expand_p1_s=0.283690 total_s=4.048380 verify_s=0.000000 bytes_sent_by_role=4428289 bytes_received_by_role=177521 total_socket_bytes=4605810 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228914 clean_protocol_bytes=4605810 entries=8388608 entries_per_s=2072090.048881 bytes_per_entry=0.549055 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14115]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14116 18 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14116 18 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14116 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=3.302356 pprf_setup_s=0.485745 setup_s=3.788101 expand_p0_s=0.296379 expand_p1_s=0.000000 total_s=4.084480 verify_s=0.000000 bytes_sent_by_role=177521 bytes_received_by_role=4428289 total_socket_bytes=4605810 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228640 clean_protocol_bytes=4605536 entries=8388608 entries_per_s=2053776.105574 bytes_per_entry=0.549023 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14116 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=1.970246 pprf_setup_s=1.797668 setup_s=3.767913 expand_p0_s=0.000000 expand_p1_s=0.285183 total_s=4.053096 verify_s=0.000000 bytes_sent_by_role=4428289 bytes_received_by_role=177521 total_socket_bytes=4605810 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228914 clean_protocol_bytes=4605810 entries=8388608 entries_per_s=2069678.995426 bytes_per_entry=0.549055 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14116]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14117 18 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14117 18 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14117 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=3.303042 pprf_setup_s=0.475264 setup_s=3.778306 expand_p0_s=0.292666 expand_p1_s=0.000000 total_s=4.070973 verify_s=0.000000 bytes_sent_by_role=177521 bytes_received_by_role=4428289 total_socket_bytes=4605810 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228640 clean_protocol_bytes=4605536 entries=8388608 entries_per_s=2060590.630151 bytes_per_entry=0.549023 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14117 logN=18 N=262144 t=64 m=32 blockSize=4096 reps=1 split_input_s=1.970769 pprf_setup_s=1.791531 setup_s=3.762301 expand_p0_s=0.000000 expand_p1_s=0.286998 total_s=4.049299 verify_s=0.000000 bytes_sent_by_role=4428289 bytes_received_by_role=177521 total_socket_bytes=4605810 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=228914 clean_protocol_bytes=4605810 entries=8388608 entries_per_s=2071619.758407 bytes_per_entry=0.549055 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14117]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14118 18 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14118 18 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14118 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.000203 silent_extension_s=88.406148 local_output_mapping_s=0.000000 total_s=89.406351 verify_s=0.000000 bytes_sent_by_role=130119056 bytes_received_by_role=407160 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130118800 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=95624 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14118 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=88.703556 silent_extension_s=0.426929 local_output_mapping_s=0.000000 total_s=89.130484 verify_s=0.000000 bytes_sent_by_role=407160 bytes_received_by_role=130119056 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=407160 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=341496 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14118]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14119 18 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14119 18 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14119 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.003040 silent_extension_s=88.765224 local_output_mapping_s=0.000000 total_s=89.768264 verify_s=0.000000 bytes_sent_by_role=130119056 bytes_received_by_role=407160 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130118800 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=95624 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14119 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=89.062847 silent_extension_s=0.427674 local_output_mapping_s=0.000000 total_s=89.490522 verify_s=0.000000 bytes_sent_by_role=407160 bytes_received_by_role=130119056 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=407160 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=341496 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14119]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14120 18 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14120 18 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14120 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.001470 silent_extension_s=88.589802 local_output_mapping_s=0.000000 total_s=89.591271 verify_s=0.000000 bytes_sent_by_role=130119056 bytes_received_by_role=407160 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130118800 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=95624 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14120 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=88.883979 silent_extension_s=0.431781 local_output_mapping_s=0.000000 total_s=89.315759 verify_s=0.000000 bytes_sent_by_role=407160 bytes_received_by_role=130119056 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=407160 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=341496 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14120]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14121 18 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14121 18 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14121 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.001575 silent_extension_s=88.441186 local_output_mapping_s=0.000000 total_s=89.442761 verify_s=0.000000 bytes_sent_by_role=130119056 bytes_received_by_role=407160 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130118800 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=95624 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14121 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=88.727748 silent_extension_s=0.440101 local_output_mapping_s=0.000000 total_s=89.167849 verify_s=0.000000 bytes_sent_by_role=407160 bytes_received_by_role=130119056 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=407160 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=341496 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14121]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14122 18 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14122 18 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14122 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.001615 silent_extension_s=91.361411 local_output_mapping_s=0.000000 total_s=92.363027 verify_s=0.000000 bytes_sent_by_role=130119056 bytes_received_by_role=407160 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130118800 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=95624 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14122 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=91.619855 silent_extension_s=0.431868 local_output_mapping_s=0.000000 total_s=92.051723 verify_s=0.000000 bytes_sent_by_role=407160 bytes_received_by_role=130119056 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=407160 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=341496 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14122]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14123 18 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14123 18 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14123 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.004601 silent_extension_s=108.318737 local_output_mapping_s=0.000000 total_s=109.323339 verify_s=0.000000 bytes_sent_by_role=130119056 bytes_received_by_role=407160 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130118800 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=95624 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14123 logN=18 N=262144 m=32 reps=1 requested_N=262144 generated_N=262144 code_size=524768 noise_weight=248 partition_count=248 size_per_partition=2116 base_ot_count=2976 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=105.615459 silent_extension_s=0.438191 local_output_mapping_s=0.000000 total_s=106.053650 verify_s=0.000000 bytes_sent_by_role=407160 bytes_received_by_role=130119056 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=407160 direct_payload_bytes=0 silent_base_ot_bytes=95232 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=341496 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14123]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14124 20 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14124 20 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14124 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=4.743730 pprf_setup_s=1.690306 setup_s=6.434036 expand_p0_s=1.456405 expand_p1_s=0.000000 total_s=7.890441 verify_s=0.000000 bytes_sent_by_role=186225 bytes_received_by_role=4436481 total_socket_bytes=4622706 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245536 clean_protocol_bytes=4622432 entries=33554432 entries_per_s=4252542.223798 bytes_per_entry=0.137759 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14124 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=3.955179 pprf_setup_s=3.094301 setup_s=7.049479 expand_p0_s=0.000000 expand_p1_s=1.477820 total_s=8.527299 verify_s=0.000000 bytes_sent_by_role=4436481 bytes_received_by_role=186225 total_socket_bytes=4622706 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245810 clean_protocol_bytes=4622706 entries=33554432 entries_per_s=3934942.430159 bytes_per_entry=0.137767 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14124]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14125 20 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14125 20 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14125 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=5.946896 pprf_setup_s=3.906138 setup_s=9.853034 expand_p0_s=1.429303 expand_p1_s=0.000000 total_s=11.282337 verify_s=0.000000 bytes_sent_by_role=186225 bytes_received_by_role=4436481 total_socket_bytes=4622706 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245536 clean_protocol_bytes=4622432 entries=33554432 entries_per_s=2974067.523348 bytes_per_entry=0.137759 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14125 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=4.229484 pprf_setup_s=4.692191 setup_s=8.921675 expand_p0_s=0.000000 expand_p1_s=1.447681 total_s=10.369356 verify_s=0.000000 bytes_sent_by_role=4436481 bytes_received_by_role=186225 total_socket_bytes=4622706 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245810 clean_protocol_bytes=4622706 entries=33554432 entries_per_s=3235922.324874 bytes_per_entry=0.137767 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14125]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14126 20 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14126 20 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14126 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=3.713829 pprf_setup_s=1.313647 setup_s=5.027476 expand_p0_s=1.469663 expand_p1_s=0.000000 total_s=6.497139 verify_s=0.000000 bytes_sent_by_role=186225 bytes_received_by_role=4436481 total_socket_bytes=4622706 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245536 clean_protocol_bytes=4622432 entries=33554432 entries_per_s=5164493.149663 bytes_per_entry=0.137759 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14126 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=2.048029 pprf_setup_s=2.799113 setup_s=4.847142 expand_p0_s=0.000000 expand_p1_s=1.469884 total_s=6.317026 verify_s=0.000000 bytes_sent_by_role=4436481 bytes_received_by_role=186225 total_socket_bytes=4622706 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245810 clean_protocol_bytes=4622706 entries=33554432 entries_per_s=5311745.235706 bytes_per_entry=0.137767 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14126]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14127 20 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14127 20 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14127 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=3.629015 pprf_setup_s=1.110643 setup_s=4.739658 expand_p0_s=1.448816 expand_p1_s=0.000000 total_s=6.188474 verify_s=0.000000 bytes_sent_by_role=186225 bytes_received_by_role=4436481 total_socket_bytes=4622706 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245536 clean_protocol_bytes=4622432 entries=33554432 entries_per_s=5422084.569546 bytes_per_entry=0.137759 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14127 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=1.830330 pprf_setup_s=2.810012 setup_s=4.640342 expand_p0_s=0.000000 expand_p1_s=1.462767 total_s=6.103109 verify_s=0.000000 bytes_sent_by_role=4436481 bytes_received_by_role=186225 total_socket_bytes=4622706 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245810 clean_protocol_bytes=4622706 entries=33554432 entries_per_s=5497924.769406 bytes_per_entry=0.137767 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14127]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14128 20 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14128 20 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14128 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=3.648231 pprf_setup_s=1.182024 setup_s=4.830254 expand_p0_s=1.464591 expand_p1_s=0.000000 total_s=6.294846 verify_s=0.000000 bytes_sent_by_role=186225 bytes_received_by_role=4436481 total_socket_bytes=4622706 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245536 clean_protocol_bytes=4622432 entries=33554432 entries_per_s=5330461.530617 bytes_per_entry=0.137759 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14128 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=1.706219 pprf_setup_s=3.004939 setup_s=4.711159 expand_p0_s=0.000000 expand_p1_s=1.463857 total_s=6.175016 verify_s=0.000000 bytes_sent_by_role=4436481 bytes_received_by_role=186225 total_socket_bytes=4622706 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245810 clean_protocol_bytes=4622706 entries=33554432 entries_per_s=5433902.007445 bytes_per_entry=0.137767 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14128]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH server 0.0.0.0 14129 20 64 32 1 bench coeff-ot vector &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH client 127.0.0.1 14129 20 64 32 1 bench coeff-ot vector
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=receiver-server-p0 network=tcp-loopback address=0.0.0.0:14129 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=3.406142 pprf_setup_s=1.117232 setup_s=4.523374 expand_p0_s=1.463331 expand_p1_s=0.000000 total_s=5.986705 verify_s=0.000000 bytes_sent_by_role=186225 bytes_received_by_role=4436481 total_socket_bytes=4622706 harness_metadata_bytes=274 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245536 clean_protocol_bytes=4622432 entries=33554432 entries_per_s=5604824.692847 bytes_per_entry=0.137759 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=0 coeff_ot_encrypted_payload_flush_count=0 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=0 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p0_coeff_bit_ot_receiver; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+RMVOLE_NET_BENCH mode=bench setup_mode=split-input-coeff-ot backend=vector role=sender-client-p1 network=tcp-loopback address=127.0.0.1:14129 logN=20 N=1048576 t=64 m=32 blockSize=16384 reps=1 split_input_s=2.035622 pprf_setup_s=2.389675 setup_s=4.425298 expand_p0_s=0.000000 expand_p1_s=1.486328 total_s=5.911625 verify_s=0.000000 bytes_sent_by_role=4436481 bytes_received_by_role=186225 total_socket_bytes=4622706 harness_metadata_bytes=272 verification_opening_bytes=0 split_input_bytes=4376896 pprf_bytes=245810 clean_protocol_bytes=4622706 entries=33554432 entries_per_s=5676008.003250 bytes_per_entry=0.137767 pprf_instances=2 default_base_ot_calls=2 split_input_base_ot_mode=INCLUDING_BASE_OT coeff_ot_encrypted_pair_count=7808 coeff_ot_encrypted_payload_send_calls=1 coeff_ot_encrypted_payload_flush_count=1 coeff_ot_encrypted_payload_bytes=3997696 coeff_ot_encrypted_payload_bytes_per_send=3997696 coeff_ot_protocol_round_count=3 notes=tcp_two_process; p1_coeff_bit_ot_sender; SPLIT_COEFF_OT; one_batched_Kos_chosen_message_OT; vector_fixed_prime_setup; local_expand PASS
+[server_exit=0 client_exit=0 port=14129]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14130 20 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14130 20 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14130 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.068255 silent_extension_s=91.517486 local_output_mapping_s=0.000000 total_s=92.585741 verify_s=0.000000 bytes_sent_by_role=130134928 bytes_received_by_role=423032 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130134672 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=111496 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14130 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=89.886713 silent_extension_s=2.513225 local_output_mapping_s=0.000000 total_s=92.399937 verify_s=0.000000 bytes_sent_by_role=423032 bytes_received_by_role=130134928 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=423032 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=357368 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14130]
+
+$ tc qdisc del dev lo root
+[exit=0 elapsed_s=0.002829]
+
+$ tc qdisc show dev lo
+qdisc noqueue 0: root refcnt 2 
+[exit=0 elapsed_s=0.002201]
+
+# final qdisc after WAN10 m=32 completion: qdisc noqueue 0: root refcnt 2
+
+# WAN10 m=32 measured-trial resume 2026-07-28T02:55:46.918609+00:00 source=56a80d12dc147c6f4d9452798d88f387cd1c778b
+$ tc qdisc del dev lo root
+Error: Cannot delete qdisc with handle of zero.
+[exit=2 elapsed_s=0.002334]
+
+$ tc qdisc replace dev lo root netem rate 12mbit delay 20ms
+[exit=0 elapsed_s=0.002258]
+
+$ tc qdisc show dev lo
+qdisc netem 8027: root refcnt 2 limit 1000 delay 20.0ms rate 12Mbit
+[exit=0 elapsed_s=0.001978]
+
+$ ping -c 20 -i 0.05 127.0.0.1
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=40.2 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=3 ttl=64 time=48.6 ms
+64 bytes from 127.0.0.1: icmp_seq=4 ttl=64 time=44.2 ms
+64 bytes from 127.0.0.1: icmp_seq=5 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=6 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=7 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=8 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=9 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=10 ttl=64 time=40.2 ms
+64 bytes from 127.0.0.1: icmp_seq=11 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=12 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=13 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=14 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=15 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=16 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=17 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=18 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=19 ttl=64 time=40.1 ms
+64 bytes from 127.0.0.1: icmp_seq=20 ttl=64 time=40.1 ms
+
+--- 127.0.0.1 ping statistics ---
+20 packets transmitted, 20 received, 0% packet loss, time 949ms
+rtt min/avg/max/mdev = 40.140/40.767/48.596/1.996 ms
+[exit=0 elapsed_s=0.992266]
+
+$ iperf3 -s -1 -p 14300 &
+$ iperf3 -c 127.0.0.1 -p 14300 -t 2 -J
+{
+	"start":	{
+		"connected":	[{
+				"socket":	5,
+				"local_host":	"127.0.0.1",
+				"local_port":	34578,
+				"remote_host":	"127.0.0.1",
+				"remote_port":	14300
+			}],
+		"version":	"iperf 3.7",
+		"system_info":	"Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64",
+		"timestamp":	{
+			"time":	"Tue, 28 Jul 2026 02:55:48 GMT",
+			"timesecs":	1785207348
+		},
+		"connecting_to":	{
+			"host":	"127.0.0.1",
+			"port":	14300
+		},
+		"cookie":	"vhybgoy52uykv2n2spnykfq7bsog6mgzgyug",
+		"tcp_mss_default":	32741,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	16384,
+		"rcvbuf_actual":	131072,
+		"test_start":	{
+			"protocol":	"TCP",
+			"num_streams":	1,
+			"blksize":	131072,
+			"omit":	0,
+			"duration":	2,
+			"bytes":	0,
+			"blocks":	0,
+			"reverse":	0,
+			"tos":	0
+		}
+	},
+	"intervals":	[{
+			"streams":	[{
+					"socket":	5,
+					"start":	0,
+					"end":	1.000498,
+					"seconds":	1.0004980564117432,
+					"bytes":	3866624,
+					"bits_per_second":	30917593.294424046,
+					"retransmits":	1,
+					"snd_cwnd":	1571592,
+					"rtt":	298828,
+					"rttvar":	67674,
+					"pmtu":	65535,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	0,
+				"end":	1.000498,
+				"seconds":	1.0004980564117432,
+				"bytes":	3866624,
+				"bits_per_second":	30917593.294424046,
+				"retransmits":	1,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	1.000498,
+					"end":	2.000676,
+					"seconds":	1.0001779794692993,
+					"bytes":	1310720,
+					"bits_per_second":	10483894.082095079,
+					"retransmits":	0,
+					"snd_cwnd":	1702558,
+					"rtt":	537930,
+					"rttvar":	14277,
+					"pmtu":	65535,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	1.000498,
+				"end":	2.000676,
+				"seconds":	1.0001779794692993,
+				"bytes":	1310720,
+				"bits_per_second":	10483894.082095079,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}],
+	"end":	{
+		"streams":	[{
+				"sender":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.000676,
+					"seconds":	2.000676,
+					"bytes":	5177344,
+					"bits_per_second":	20702378.596034542,
+					"retransmits":	1,
+					"max_snd_cwnd":	1702558,
+					"max_rtt":	537930,
+					"min_rtt":	298828,
+					"mean_rtt":	418379,
+					"sender":	true
+				},
+				"receiver":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.984901,
+					"seconds":	2.000676,
+					"bytes":	3898279,
+					"bits_per_second":	10447995.42765405,
+					"sender":	true
+				}
+			}],
+		"sum_sent":	{
+			"start":	0,
+			"end":	2.000676,
+			"seconds":	2.000676,
+			"bytes":	5177344,
+			"bits_per_second":	20702378.596034542,
+			"retransmits":	1,
+			"sender":	true
+		},
+		"sum_received":	{
+			"start":	0,
+			"end":	2.984901,
+			"seconds":	2.984901,
+			"bytes":	3898279,
+			"bits_per_second":	10447995.42765405,
+			"sender":	true
+		},
+		"cpu_utilization_percent":	{
+			"host_total":	5.142026258237486,
+			"host_user":	1.7227427288513657,
+			"host_system":	3.4193289400071207,
+			"remote_total":	0.069296790084886428,
+			"remote_user":	0,
+			"remote_system":	0.069296790084886428
+		},
+		"sender_tcp_congestion":	"cubic",
+		"receiver_tcp_congestion":	"cubic"
+	}
+}
+[exit=0 elapsed_s=4.222035]
+
+-----------------------------------------------------------
+Server listening on 14300
+-----------------------------------------------------------
+Accepted connection from 127.0.0.1, port 34562
+[  5] local 127.0.0.1 port 14300 connected to 127.0.0.1 port 34578
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-1.00   sec   960 KBytes  7.86 Mbits/sec                  
+[  5]   1.00-2.00   sec  1.41 MBytes  11.8 Mbits/sec                  
+[  5]   2.00-2.98   sec  1.37 MBytes  11.7 Mbits/sec                  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-2.98   sec  3.72 MBytes  10.4 Mbits/sec                  receiver
+[iperf_server_exit=0 direction=forward]
+
+$ iperf3 -s -1 -p 14301 &
+$ iperf3 -c 127.0.0.1 -p 14301 -t 2 -J -R
+{
+	"start":	{
+		"connected":	[{
+				"socket":	5,
+				"local_host":	"127.0.0.1",
+				"local_port":	54656,
+				"remote_host":	"127.0.0.1",
+				"remote_port":	14301
+			}],
+		"version":	"iperf 3.7",
+		"system_info":	"Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64",
+		"timestamp":	{
+			"time":	"Tue, 28 Jul 2026 02:55:52 GMT",
+			"timesecs":	1785207352
+		},
+		"connecting_to":	{
+			"host":	"127.0.0.1",
+			"port":	14301
+		},
+		"cookie":	"zuopyds64j7td3wjfo22hc4ov6c7vhziduel",
+		"tcp_mss_default":	32741,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	16384,
+		"rcvbuf_actual":	131072,
+		"test_start":	{
+			"protocol":	"TCP",
+			"num_streams":	1,
+			"blksize":	131072,
+			"omit":	0,
+			"duration":	2,
+			"bytes":	0,
+			"blocks":	0,
+			"reverse":	1,
+			"tos":	0
+		}
+	},
+	"intervals":	[{
+			"streams":	[{
+					"socket":	5,
+					"start":	0,
+					"end":	1.000063,
+					"seconds":	1.0000629425048828,
+					"bytes":	1343488,
+					"bits_per_second":	10747227.542577924,
+					"omitted":	false,
+					"sender":	false
+				}],
+			"sum":	{
+				"start":	0,
+				"end":	1.000063,
+				"seconds":	1.0000629425048828,
+				"bytes":	1343488,
+				"bits_per_second":	10747227.542577924,
+				"omitted":	false,
+				"sender":	false
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	1.000063,
+					"end":	2.000071,
+					"seconds":	1.0000079870224,
+					"bytes":	1441580,
+					"bits_per_second":	11532547.889281681,
+					"omitted":	false,
+					"sender":	false
+				}],
+			"sum":	{
+				"start":	1.000063,
+				"end":	2.000071,
+				"seconds":	1.0000079870224,
+				"bytes":	1441580,
+				"bits_per_second":	11532547.889281681,
+				"omitted":	false,
+				"sender":	false
+			}
+		}],
+	"end":	{
+		"streams":	[{
+				"sender":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.640171,
+					"seconds":	2.640171,
+					"bytes":	6488064,
+					"bits_per_second":	19659526.598845303,
+					"retransmits":	0,
+					"max_snd_cwnd":	0,
+					"max_rtt":	0,
+					"min_rtt":	0,
+					"mean_rtt":	0,
+					"sender":	false
+				},
+				"receiver":	{
+					"socket":	5,
+					"start":	0,
+					"end":	2.000071,
+					"seconds":	2.000071,
+					"bytes":	2785068,
+					"bits_per_second":	11139876.534383029,
+					"sender":	false
+				}
+			}],
+		"sum_sent":	{
+			"start":	0,
+			"end":	2.640171,
+			"seconds":	2.640171,
+			"bytes":	6488064,
+			"bits_per_second":	19659526.598845303,
+			"retransmits":	0,
+			"sender":	false
+		},
+		"sum_received":	{
+			"start":	0,
+			"end":	2.000071,
+			"seconds":	2.000071,
+			"bytes":	2785068,
+			"bits_per_second":	11139876.534383029,
+			"sender":	false
+		},
+		"cpu_utilization_percent":	{
+			"host_total":	1.9973682740301697,
+			"host_user":	0.44912851897963163,
+			"host_system":	1.5482397550505382,
+			"remote_total":	0.087847712087105484,
+			"remote_user":	0,
+			"remote_system":	0.087847712087105484
+		},
+		"sender_tcp_congestion":	"cubic",
+		"receiver_tcp_congestion":	"cubic"
+	}
+}
+[exit=0 elapsed_s=4.746825]
+
+-----------------------------------------------------------
+Server listening on 14301
+-----------------------------------------------------------
+Accepted connection from 127.0.0.1, port 54644
+[  5] local 127.0.0.1 port 14301 connected to 127.0.0.1 port 54656
+[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+[  5]   0.00-1.00   sec  3.69 MBytes  30.9 Mbits/sec    0   1.50 MBytes       
+[  5]   1.00-2.00   sec  1.25 MBytes  10.5 Mbits/sec    0   1.62 MBytes       
+[  5]   2.00-2.64   sec  1.25 MBytes  16.4 Mbits/sec    0   1.69 MBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-2.64   sec  6.19 MBytes  19.7 Mbits/sec    0             sender
+[iperf_server_exit=0 direction=reverse]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14310 20 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14310 20 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14310 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.071525 silent_extension_s=90.579620 local_output_mapping_s=0.000000 total_s=91.651145 verify_s=0.000000 bytes_sent_by_role=130134928 bytes_received_by_role=423032 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130134672 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=111496 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14310 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=88.933643 silent_extension_s=2.398637 local_output_mapping_s=0.000000 total_s=91.332280 verify_s=0.000000 bytes_sent_by_role=423032 bytes_received_by_role=130134928 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=423032 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=357368 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14310]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14311 20 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14311 20 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14311 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.070403 silent_extension_s=91.852501 local_output_mapping_s=0.000000 total_s=92.922904 verify_s=0.000000 bytes_sent_by_role=130134928 bytes_received_by_role=423032 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130134672 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=111496 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14311 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=90.166147 silent_extension_s=2.551167 local_output_mapping_s=0.000000 total_s=92.717314 verify_s=0.000000 bytes_sent_by_role=423032 bytes_received_by_role=130134928 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=423032 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=357368 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14311]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14312 20 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14312 20 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14312 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.068154 silent_extension_s=90.633104 local_output_mapping_s=0.000000 total_s=91.701258 verify_s=0.000000 bytes_sent_by_role=130134928 bytes_received_by_role=423032 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130134672 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=111496 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14312 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=88.928104 silent_extension_s=2.467109 local_output_mapping_s=0.000000 total_s=91.395213 verify_s=0.000000 bytes_sent_by_role=423032 bytes_received_by_role=130134928 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=423032 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=357368 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14312]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14313 20 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14313 20 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14313 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.066366 silent_extension_s=91.084245 local_output_mapping_s=0.000000 total_s=92.150611 verify_s=0.000000 bytes_sent_by_role=130134928 bytes_received_by_role=423032 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130134672 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=111496 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14313 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=89.427175 silent_extension_s=2.456658 local_output_mapping_s=0.000000 total_s=91.883833 verify_s=0.000000 bytes_sent_by_role=423032 bytes_received_by_role=130134928 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=423032 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=357368 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14313]
+
+$ taskset -c 0 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-server 0.0.0.0 14314 20 32 1 bench &
+$ taskset -c 2 /home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/main --RMVOLE_NET_BENCH silent-client 127.0.0.1 14314 20 32 1 bench
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=receiver-server-p0 mode=bench network=tcp-loopback address=0.0.0.0:14314 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=1.066537 silent_extension_s=90.997349 local_output_mapping_s=0.000000 total_s=92.063886 verify_s=0.000000 bytes_sent_by_role=130134928 bytes_received_by_role=423032 harness_metadata_bytes=256 verification_opening_bytes=0 clean_protocol_bytes_by_role=130134672 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=111496 silent_extension_payload_bytes=130023432 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+SILENT_SVOLE_TCP method=SILENT_SVOLE role=sender-client-p1 mode=bench network=tcp-loopback address=127.0.0.1:14314 logN=20 N=1048576 m=32 reps=1 requested_N=1048576 generated_N=1048576 code_size=2097584 noise_weight=248 partition_count=248 size_per_partition=8458 base_ot_count=3472 base_ot_protocol_invocations=1 base_noisy_vole_count=248 silent_extension_count=1 base_correlation_setup_s=89.333762 silent_extension_s=2.475601 local_output_mapping_s=0.000000 total_s=91.809363 verify_s=0.000000 bytes_sent_by_role=423032 bytes_received_by_role=130134928 harness_metadata_bytes=0 verification_opening_bytes=0 clean_protocol_bytes_by_role=423032 direct_payload_bytes=0 silent_base_ot_bytes=111104 silent_base_noisy_vole_bytes=65664 silent_extension_payload_bytes=357368 framing_bytes=0 notes=tcp_two_process; libOTe_SilentVole; semi_honest_128; MultType=ExConv7x24; BaseElem=u64; ExtElem=array<u64,M>; x=c; Z0=a; Z1=-b PASS
+[server_exit=0 client_exit=0 port=14314]
+
+$ tc qdisc del dev lo root
+[exit=0 elapsed_s=0.002867]
+
+$ tc qdisc show dev lo
+qdisc noqueue 0: root refcnt 2 
+[exit=0 elapsed_s=0.002163]
+
+# final qdisc after WAN10 m=32 resume: qdisc noqueue 0: root refcnt 2

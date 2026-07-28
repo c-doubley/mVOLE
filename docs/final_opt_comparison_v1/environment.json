@@ -6,5 +6,49 @@
   "python": "3.8.10",
   "cpu_count": 64,
   "network_label": "emulated TCP network",
-  "network_continuation_source_commit": "56a80d12dc147c6f4d9452798d88f387cd1c778b"
+  "network_continuation_source_commit": "56a80d12dc147c6f4d9452798d88f387cd1c778b",
+  "wan10_m32_completion": {
+    "timestamp": "2026-07-28T03:03:39.754905+00:00",
+    "source_commit": "56a80d12dc147c6f4d9452798d88f387cd1c778b",
+    "artifact_parent_commit": "089625deca9f7f1dcebe6cfa903d5bcc78cbb982",
+    "new_raw_rows": 36,
+    "validation_campaigns": [
+      {
+        "timestamp": "2026-07-28T02:29:20.422174+00:00",
+        "profile": "WAN10",
+        "network_label": "emulated TCP network",
+        "topology": "loopback_tc",
+        "target_rtt_ms": 40.0,
+        "median_rtt_ms": 40.1,
+        "rtt_within_15pct": 1,
+        "target_bits_per_second": 10000000,
+        "iperf_forward_bits_per_second": 10704973.47776885,
+        "iperf_reverse_bits_per_second": 11139876.534383029,
+        "throughput_within_15pct": 1,
+        "tc_qdisc": "qdisc netem 8026: root refcnt 2 limit 1000 delay 20.0ms rate 12Mbit",
+        "ping_samples_ms": "40.200 40.100 40.100 43.100 40.100 40.100 40.100 40.100 41.400 40.100 40.100 40.100 40.100 40.100 40.100 40.100 40.100 40.100 40.100 40.100",
+        "status": "OK",
+        "campaign": "WAN10_m32_completion_partial",
+        "final_tc_qdisc_after_cleanup": "qdisc noqueue 0: root refcnt 2"
+      },
+      {
+        "timestamp": "2026-07-28T02:55:57.545644+00:00",
+        "profile": "WAN10",
+        "network_label": "emulated TCP network",
+        "topology": "loopback_tc",
+        "target_rtt_ms": 40.0,
+        "median_rtt_ms": 40.1,
+        "rtt_within_15pct": 1,
+        "target_bits_per_second": 10000000,
+        "iperf_forward_bits_per_second": 10447995.42765405,
+        "iperf_reverse_bits_per_second": 11139876.534383029,
+        "throughput_within_15pct": 1,
+        "tc_qdisc": "qdisc netem 8027: root refcnt 2 limit 1000 delay 20.0ms rate 12Mbit",
+        "ping_samples_ms": "40.200 40.100 48.600 44.200 40.100 40.100 40.100 40.100 40.100 40.200 40.100 40.100 40.100 40.100 40.100 40.100 40.100 40.100 40.100 40.100",
+        "status": "OK",
+        "campaign": "WAN10_m32_completion_resume",
+        "final_tc_qdisc_after_cleanup": "qdisc noqueue 0: root refcnt 2"
+      }
+    ]
+  }
 }

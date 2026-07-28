@@ -1,0 +1,106 @@
+{
+  "timestamp": "2026-07-28T02:27:38.278201+00:00",
+  "source_commit_for_new_measurements": "56a80d12dc147c6f4d9452798d88f387cd1c778b",
+  "artifact_parent_commit": "089625deca9f7f1dcebe6cfa903d5bcc78cbb982",
+  "cpu_model_name_exact": "Intel(R) Xeon(R) Platinum 8269CY CPU T 3.10GHz",
+  "cpu_mhz_reported": "3500.369",
+  "cpu_min_mhz": "1200.0000",
+  "cpu_max_mhz": "3800.0000",
+  "sockets": "2",
+  "cores_per_socket": "16",
+  "threads_per_core": "2",
+  "logical_cpu_count": "64",
+  "architecture": "x86_64",
+  "total_ram_free_h": "Mem:          247Gi       9.2Gi       196Gi       3.0Mi        42Gi       236Gi",
+  "memtotal_proc_meminfo": "MemTotal:       259952056 kB",
+  "uname_a": "Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux",
+  "cpu_binding": {
+    "P0_server_cpu": 0,
+    "P1_client_cpu": 2,
+    "cpu0": {
+      "CPU": 0,
+      "CORE": "0",
+      "SOCKET": "0",
+      "NODE": "0"
+    },
+    "cpu2": {
+      "CPU": 2,
+      "CORE": "1",
+      "SOCKET": "0",
+      "NODE": "0"
+    },
+    "different_physical_cores": true
+  },
+  "build_configuration": "Release",
+  "compiler_version": "c++ (Ubuntu 11.5.0-10ubuntu1~20~ppa3) 11.5.0",
+  "cmake_version": "cmake version 3.27.9",
+  "raw_commands": {
+    "uname_a": {
+      "cmd": [
+        "uname",
+        "-a"
+      ],
+      "returncode": 0,
+      "stdout": "Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux\n"
+    },
+    "lscpu": {
+      "cmd": [
+        "lscpu"
+      ],
+      "returncode": 0,
+      "stdout": "Architecture:                       x86_64\nCPU op-mode(s):                     32-bit, 64-bit\nByte Order:                         Little Endian\nAddress sizes:                      46 bits physical, 48 bits virtual\nCPU(s):                             64\nOn-line CPU(s) list:                0-63\nThread(s) per core:                 2\nCore(s) per socket:                 16\nSocket(s):                          2\nNUMA node(s):                       2\nVendor ID:                          GenuineIntel\nCPU family:                         6\nModel:                              85\nModel name:                         Intel(R) Xeon(R) Platinum 8269CY CPU T 3.10GHz\nStepping:                           7\nCPU MHz:                            3500.369\nCPU max MHz:                        3800.0000\nCPU min MHz:                        1200.0000\nBogoMIPS:                           6200.00\nHypervisor vendor:                  KVM\nVirtualization type:                full\nL1d cache:                          1 MiB\nL1i cache:                          1 MiB\nL2 cache:                           32 MiB\nL3 cache:                           71.5 MiB\nNUMA node0 CPU(s):                  0-31\nNUMA node1 CPU(s):                  32-63\nVulnerability Gather data sampling: Unknown: Dependent on hypervisor status\nVulnerability Itlb multihit:        KVM: Vulnerable\nVulnerability L1tf:                 Mitigation; PTE Inversion\nVulnerability Mds:                  Vulnerable: Clear CPU buffers attempted, no microcode; SMT Host state unknown\nVulnerability Meltdown:             Mitigation; PTI\nVulnerability Mmio stale data:      Vulnerable: Clear CPU buffers attempted, no microcode; SMT Host state unknown\nVulnerability Retbleed:             Vulnerable\nVulnerability Spec store bypass:    Vulnerable\nVulnerability Spectre v1:           Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:           Mitigation; Retpolines; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Retpoline\nVulnerability Srbds:                Not affected\nVulnerability Tsx async abort:      Not affected\nFlags:                              fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch invpcid_single pti fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap clflushopt clwb avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves ida arat avx512_vnni\n"
+    },
+    "lscpu_extended": {
+      "cmd": [
+        "lscpu",
+        "-e=CPU,CORE,SOCKET,NODE"
+      ],
+      "returncode": 0,
+      "stdout": "CPU CORE SOCKET NODE\n  0    0      0    0\n  1    0      0    0\n  2    1      0    0\n  3    1      0    0\n  4    2      0    0\n  5    2      0    0\n  6    3      0    0\n  7    3      0    0\n  8    4      0    0\n  9    4      0    0\n 10    5      0    0\n 11    5      0    0\n 12    6      0    0\n 13    6      0    0\n 14    7      0    0\n 15    7      0    0\n 16    8      0    0\n 17    8      0    0\n 18    9      0    0\n 19    9      0    0\n 20   10      0    0\n 21   10      0    0\n 22   11      0    0\n 23   11      0    0\n 24   12      0    0\n 25   12      0    0\n 26   13      0    0\n 27   13      0    0\n 28   14      0    0\n 29   14      0    0\n 30   15      0    0\n 31   15      0    0\n 32   16      1    1\n 33   16      1    1\n 34   17      1    1\n 35   17      1    1\n 36   18      1    1\n 37   18      1    1\n 38   19      1    1\n 39   19      1    1\n 40   20      1    1\n 41   20      1    1\n 42   21      1    1\n 43   21      1    1\n 44   22      1    1\n 45   22      1    1\n 46   23      1    1\n 47   23      1    1\n 48   24      1    1\n 49   24      1    1\n 50   25      1    1\n 51   25      1    1\n 52   26      1    1\n 53   26      1    1\n 54   27      1    1\n 55   27      1    1\n 56   28      1    1\n 57   28      1    1\n 58   29      1    1\n 59   29      1    1\n 60   30      1    1\n 61   30      1    1\n 62   31      1    1\n 63   31      1    1\n"
+    },
+    "free_h": {
+      "cmd": [
+        "free",
+        "-h"
+      ],
+      "returncode": 0,
+      "stdout": "              total        used        free      shared  buff/cache   available\nMem:          247Gi       9.2Gi       196Gi       3.0Mi        42Gi       236Gi\nSwap:            0B          0B          0B\n"
+    },
+    "meminfo": {
+      "cmd": [
+        "sed",
+        "-n",
+        "1,8p",
+        "/proc/meminfo"
+      ],
+      "returncode": 0,
+      "stdout": "MemTotal:       259952056 kB\nMemFree:        205702500 kB\nMemAvailable:   248496952 kB\nBuffers:         9770172 kB\nCached:         27227012 kB\nSwapCached:            0 kB\nActive:         33487612 kB\nInactive:       10419996 kB\n"
+    },
+    "cxx_version": {
+      "cmd": [
+        "c++",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "c++ (Ubuntu 11.5.0-10ubuntu1~20~ppa3) 11.5.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+    },
+    "cmake_version": {
+      "cmd": [
+        "cmake",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "cmake version 3.27.9\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).\n"
+    },
+    "cmake_cache_build_type": {
+      "cmd": [
+        "rg",
+        "-n",
+        "CMAKE_BUILD_TYPE|CMAKE_CXX_COMPILER|CMAKE_CXX_FLAGS_RELEASE",
+        "/home/cyy/pcg-experiments/mVOLE-split-opt-network/build-final-opt/CMakeCache.txt"
+      ],
+      "returncode": 0,
+      "stdout": "CMAKE_BUILD_TYPE:STRING=Release\nCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++\nCMAKE_CXX_COMPILER_AR:FILEPATH=/usr/bin/gcc-ar-11\nCMAKE_CXX_COMPILER_RANLIB:FILEPATH=/usr/bin/gcc-ranlib-11\nCMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG\n//ADVANCED property for variable: CMAKE_CXX_COMPILER\nCMAKE_CXX_COMPILER-ADVANCED:INTERNAL=1\n//ADVANCED property for variable: CMAKE_CXX_COMPILER_AR\nCMAKE_CXX_COMPILER_AR-ADVANCED:INTERNAL=1\n//ADVANCED property for variable: CMAKE_CXX_COMPILER_RANLIB\nCMAKE_CXX_COMPILER_RANLIB-ADVANCED:INTERNAL=1\n//ADVANCED property for variable: CMAKE_CXX_FLAGS_RELEASE\nCMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL=1\n"
+    }
+  }
+}

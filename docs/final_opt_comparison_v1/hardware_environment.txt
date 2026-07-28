@@ -1,0 +1,185 @@
+# Hardware Environment
+Timestamp: 2026-07-28T02:27:38.278201+00:00
+Source commit for new measurements: 56a80d12dc147c6f4d9452798d88f387cd1c778b
+Artifact parent commit: 089625deca9f7f1dcebe6cfa903d5bcc78cbb982
+## Summary
+cpu_model_name_exact: Intel(R) Xeon(R) Platinum 8269CY CPU T 3.10GHz
+cpu_mhz_reported: 3500.369
+cpu_min_mhz: 1200.0000
+cpu_max_mhz: 3800.0000
+sockets: 2
+cores_per_socket: 16
+threads_per_core: 2
+logical_cpu_count: 64
+architecture: x86_64
+total_ram_free_h: Mem:          247Gi       9.2Gi       196Gi       3.0Mi        42Gi       236Gi
+memtotal_proc_meminfo: MemTotal:       259952056 kB
+uname_a: Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+compiler_version: c++ (Ubuntu 11.5.0-10ubuntu1~20~ppa3) 11.5.0
+cmake_version: cmake version 3.27.9
+build_configuration: Release
+CPU binding: P0/server CPU 0, P1/client CPU 2; different physical cores: True
+
+## lscpu
+```text
+Architecture:                       x86_64
+CPU op-mode(s):                     32-bit, 64-bit
+Byte Order:                         Little Endian
+Address sizes:                      46 bits physical, 48 bits virtual
+CPU(s):                             64
+On-line CPU(s) list:                0-63
+Thread(s) per core:                 2
+Core(s) per socket:                 16
+Socket(s):                          2
+NUMA node(s):                       2
+Vendor ID:                          GenuineIntel
+CPU family:                         6
+Model:                              85
+Model name:                         Intel(R) Xeon(R) Platinum 8269CY CPU T 3.10GHz
+Stepping:                           7
+CPU MHz:                            3500.369
+CPU max MHz:                        3800.0000
+CPU min MHz:                        1200.0000
+BogoMIPS:                           6200.00
+Hypervisor vendor:                  KVM
+Virtualization type:                full
+L1d cache:                          1 MiB
+L1i cache:                          1 MiB
+L2 cache:                           32 MiB
+L3 cache:                           71.5 MiB
+NUMA node0 CPU(s):                  0-31
+NUMA node1 CPU(s):                  32-63
+Vulnerability Gather data sampling: Unknown: Dependent on hypervisor status
+Vulnerability Itlb multihit:        KVM: Vulnerable
+Vulnerability L1tf:                 Mitigation; PTE Inversion
+Vulnerability Mds:                  Vulnerable: Clear CPU buffers attempted, no microcode; SMT Host state unknown
+Vulnerability Meltdown:             Mitigation; PTI
+Vulnerability Mmio stale data:      Vulnerable: Clear CPU buffers attempted, no microcode; SMT Host state unknown
+Vulnerability Retbleed:             Vulnerable
+Vulnerability Spec store bypass:    Vulnerable
+Vulnerability Spectre v1:           Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:           Mitigation; Retpolines; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Retpoline
+Vulnerability Srbds:                Not affected
+Vulnerability Tsx async abort:      Not affected
+Flags:                              fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch invpcid_single pti fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap clflushopt clwb avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves ida arat avx512_vnni
+```
+
+## lscpu -e=CPU,CORE,SOCKET,NODE
+```text
+CPU CORE SOCKET NODE
+  0    0      0    0
+  1    0      0    0
+  2    1      0    0
+  3    1      0    0
+  4    2      0    0
+  5    2      0    0
+  6    3      0    0
+  7    3      0    0
+  8    4      0    0
+  9    4      0    0
+ 10    5      0    0
+ 11    5      0    0
+ 12    6      0    0
+ 13    6      0    0
+ 14    7      0    0
+ 15    7      0    0
+ 16    8      0    0
+ 17    8      0    0
+ 18    9      0    0
+ 19    9      0    0
+ 20   10      0    0
+ 21   10      0    0
+ 22   11      0    0
+ 23   11      0    0
+ 24   12      0    0
+ 25   12      0    0
+ 26   13      0    0
+ 27   13      0    0
+ 28   14      0    0
+ 29   14      0    0
+ 30   15      0    0
+ 31   15      0    0
+ 32   16      1    1
+ 33   16      1    1
+ 34   17      1    1
+ 35   17      1    1
+ 36   18      1    1
+ 37   18      1    1
+ 38   19      1    1
+ 39   19      1    1
+ 40   20      1    1
+ 41   20      1    1
+ 42   21      1    1
+ 43   21      1    1
+ 44   22      1    1
+ 45   22      1    1
+ 46   23      1    1
+ 47   23      1    1
+ 48   24      1    1
+ 49   24      1    1
+ 50   25      1    1
+ 51   25      1    1
+ 52   26      1    1
+ 53   26      1    1
+ 54   27      1    1
+ 55   27      1    1
+ 56   28      1    1
+ 57   28      1    1
+ 58   29      1    1
+ 59   29      1    1
+ 60   30      1    1
+ 61   30      1    1
+ 62   31      1    1
+ 63   31      1    1
+```
+
+## free -h
+```text
+              total        used        free      shared  buff/cache   available
+Mem:          247Gi       9.2Gi       196Gi       3.0Mi        42Gi       236Gi
+Swap:            0B          0B          0B
+```
+
+## /proc/meminfo excerpt
+```text
+MemTotal:       259952056 kB
+MemFree:        205702500 kB
+MemAvailable:   248496952 kB
+Buffers:         9770172 kB
+Cached:         27227012 kB
+SwapCached:            0 kB
+Active:         33487612 kB
+Inactive:       10419996 kB
+```
+
+## uname -a
+```text
+Linux cyy_exp 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+## Compiler and build
+```text
+c++ (Ubuntu 11.5.0-10ubuntu1~20~ppa3) 11.5.0
+Copyright (C) 2021 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+cmake version 3.27.9
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++
+CMAKE_CXX_COMPILER_AR:FILEPATH=/usr/bin/gcc-ar-11
+CMAKE_CXX_COMPILER_RANLIB:FILEPATH=/usr/bin/gcc-ranlib-11
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+//ADVANCED property for variable: CMAKE_CXX_COMPILER
+CMAKE_CXX_COMPILER-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CMAKE_CXX_COMPILER_AR
+CMAKE_CXX_COMPILER_AR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CMAKE_CXX_COMPILER_RANLIB
+CMAKE_CXX_COMPILER_RANLIB-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CMAKE_CXX_FLAGS_RELEASE
+CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL=1
+```
